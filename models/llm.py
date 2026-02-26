@@ -20,14 +20,7 @@ class MinimalLLM(nn.Module):
         # Transformer blocks
         self.transformer_blocks = nn.ModuleList(
             [
-                TransformerBlock(
-                    config.d_model,
-                    config.n_heads,
-                    config.d_ff,
-                    config.max_seq_len,
-                    config.dropout,
-                    n_kv_heads=config.n_kv_heads,
-                )
+                TransformerBlock(config)
                 for i in range(config.n_layers)
             ]
         )

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchtune.modules import RotaryPositionalEmbeddings
+from configs.llm_config import LLMConfig
 from .components import SquaredReLUFeedForward
 
 
@@ -22,24 +23,21 @@ class Rotary(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(
         self,
-        d_model: int,
-        n_heads: int,
-        max_seq_len: int,
-        dropout: float = 0.1,
-        n_kv_heads: int | None = None,
+        config: LLMConfig,
     ):
         super().__init__()
-        self.d_model = d_model
-        self.n_heads = n_heads
-        self.n_kv_heads = n_kv_heads if n_kv_heads is not None else n_heads
+        self.d_model = config.d_model
+        self.n_heads = config.n_heads
+        self.max_seq_len = config.max_seq_len
+        self.n_kv_heads = config.n_kv_heads if config.n_kv_heads is not None else config.n_heads
         self.num_key_value_groups = self.n_heads // self.n_kv_heads
-        self.d_k = d_model // n_heads
+        self.d_k = config.d_model // config.n_heads
         
         # ============ MERGED QKVO PROJECTION ============
         # Instead of 4 separate Linear layers, use single merged projection
-        q_size = d_model
+        q_size = config.d_model
         kv_size = self.n_kv_heads * self.d_k
-        o_size = d_model
+        o_size = config.d_model
         
         self.q_size = q_size
         self.kv_size = kv_size
@@ -48,7 +46,7 @@ class MultiHeadAttention(nn.Module):
         # Single parameter tensor for all projections
         # Shape: [Q_size + K_size + V_size + O_size, d_model]
         self.qkvo_proj = nn.Parameter(
-            torch.empty(q_size + 2 * kv_size + o_size, d_model)
+            torch.empty(q_size + 2 * kv_size + o_size, config.d_model)
         )
         
         # Initialize all weights with std=0.02
@@ -56,11 +54,26 @@ class MultiHeadAttention(nn.Module):
             torch.nn.init.normal_(self.qkvo_proj, mean=0.0, std=0.02)
         # ================================================
         
-        self.q_norm = nn.RMSNorm(self.d_k)
-        self.k_norm = nn.RMSNorm(self.d_k)
+        self.use_qk_norm = config.use_qk_norm
+        if self.use_qk_norm:
+            if config.shared_qk_norm:
+                self.qk_shared_norm = nn.RMSNorm(self.d_k)
+            else:
+                self.q_norm = nn.RMSNorm(self.d_k)
+                self.k_norm = nn.RMSNorm(self.d_k)
+            
+            if config.use_qk_bias:
+                self.q_bias = nn.Parameter(torch.zeros(self.n_heads, self.d_k))
+                self.k_bias = nn.Parameter(torch.zeros(self.n_kv_heads, self.d_k))
         
-        self.rotary = Rotary(self.d_k, max_seq_len)
-        self.dropout = dropout
+        if config.use_per_head_scaling:
+            self.head_scale = nn.Parameter(torch.ones(self.n_heads, 1, 1))
+
+        self.qk_norm_after_rope = config.qk_norm_after_rope
+        self.qk_norm_k_only = config.qk_norm_k_only
+        
+        self.rotary = Rotary(self.d_k, config.max_seq_len)
+        self.dropout = config.dropout
 
     def forward(self, x):
         batch_size, seq_len = x.size(0), x.size(1)
@@ -78,9 +91,41 @@ class MultiHeadAttention(nn.Module):
         K = K.reshape(batch_size, seq_len, self.n_kv_heads, self.d_k)
         V = V.reshape(batch_size, seq_len, self.n_kv_heads, self.d_k)
         
-        # Apply RoPE
-        Q = self.rotary(self.q_norm(Q))
-        K = self.rotary(self.k_norm(K))
+        # Apply Norm before RoPE (default) or after RoPE
+        def apply_norm(q, k):
+            if not self.use_qk_norm:
+                return q, k
+            
+            # Key only norm
+            if self.qk_norm_k_only:
+                if hasattr(self, 'qk_shared_norm'):
+                    k = self.qk_shared_norm(k)
+                else:
+                    k = self.k_norm(k)
+            # Both Q/K norm
+            else:
+                if hasattr(self, 'qk_shared_norm'):
+                    q = self.qk_shared_norm(q)
+                    k = self.qk_shared_norm(k)
+                else:
+                    q = self.q_norm(q)
+                    k = self.k_norm(k)
+            
+            # Apply Bias if enabled
+            if hasattr(self, 'q_bias'):
+                q = q + self.q_bias
+                k = k + self.k_bias
+            
+            return q, k
+
+        if not self.qk_norm_after_rope:
+            Q, K = apply_norm(Q, K)
+        
+        Q = self.rotary(Q)
+        K = self.rotary(K)
+
+        if self.qk_norm_after_rope:
+            Q, K = apply_norm(Q, K)
         
         # Repeat K/V for GQA if needed
         if self.n_kv_heads != self.n_heads:
@@ -90,6 +135,12 @@ class MultiHeadAttention(nn.Module):
         # Transpose for attention
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
         
+        # Apply head scaling if enabled
+        if hasattr(self, 'head_scale'):
+            # sqrt(scale) so that Q*K has linear head_scale
+            # We use Q * head_scale and let SDPA handle the 1/sqrt(dk)
+            Q = Q * self.head_scale
+
         # Compute attention
         attn_output = F.scaled_dot_product_attention(
             Q, K, V, is_causal=True, dropout_p=self.dropout if self.training else 0.0
@@ -110,22 +161,17 @@ class TransformerBlock(nn.Module):
 
     def __init__(
         self,
-        d_model: int,
-        n_heads: int,
-        d_ff: int,
-        max_seq_len: int,
-        dropout: float = 0.1,
-        n_kv_heads: int | None = None,
+        config: LLMConfig,
     ):
         super().__init__()
 
-        self.attention = MultiHeadAttention(d_model, n_heads, max_seq_len, dropout, n_kv_heads)
-        self.feed_forward = SquaredReLUFeedForward(d_model, d_ff, dropout)
+        self.attention = MultiHeadAttention(config)
+        self.feed_forward = SquaredReLUFeedForward(config.d_model, config.d_ff, config.dropout)
 
         # Normalization layers
-        self.norm1 = nn.RMSNorm(d_model)
-        self.norm2 = nn.RMSNorm(d_model)
-        self.dropout = nn.Dropout(dropout)
+        self.norm1 = nn.RMSNorm(config.d_model)
+        self.norm2 = nn.RMSNorm(config.d_model)
+        self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x):
         # Self-attention

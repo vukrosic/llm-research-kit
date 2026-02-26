@@ -46,6 +46,12 @@ class LLMConfig:
     dropout: float = 0.0
     grad_clip: float = 1.0
     use_amp: bool = True
+    use_qk_norm: bool = True
+    qk_norm_after_rope: bool = False
+    use_per_head_scaling: bool = False
+    qk_norm_k_only: bool = False
+    shared_qk_norm: bool = False
+    use_qk_bias: bool = False
     
     # Logging
     log_milestones: Tuple[int, ...] = (100, 500, 1000)
