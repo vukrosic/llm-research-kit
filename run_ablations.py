@@ -25,7 +25,9 @@ import sys
 import json
 import time
 import math
+import gc
 import torch
+import torch._dynamo
 import torch.nn.functional as F
 from pathlib import Path
 from torch.utils.data import DataLoader
@@ -236,12 +238,20 @@ def run_single_experiment(
         log_every=getattr(config, 'log_every', 100),
     )
     
+    # 8. Cleanup GPU memory immediately
+    del model
+    del optimizers
+    del schedulers
+    
+    gc.collect()
+    torch.cuda.empty_cache()
+    
     total_training_time = results['training_time']
     total_wall_time = setup_time + total_training_time
     final_eval = results['final_metrics']
     metrics_history = results['metrics_history']
     
-    # 8. Save results
+    # 9. Save results
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
@@ -404,7 +414,9 @@ def main():
     parser.add_argument("--dataset_path", type=str, default=None,
                         help="Path to preprocessed dataset")
     parser.add_argument("--no-compile", action="store_true",
-                        help="Disable torch.compile for faster debugging")
+                        help="Disable torch.compile (recommended for short <1M token runs)")
+    parser.add_argument("--compile", action="store_true", default=True,
+                        help="Enable torch.compile (recommended for long runs)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed")
     parser.add_argument("--batch_size", type=int, default=None,
@@ -415,11 +427,18 @@ def main():
     logger = setup_logging(log_dir="./logs")
     print_system_info()
     
+    # Logic for torch.compile
+    use_compile = args.compile and not args.no_compile
+    if not use_compile:
+        print("💡 torch.compile is DISABLED")
+    else:
+        print("🚀 torch.compile is ENABLED")
+
     print(f"🔬 ABLATION STUDY")
     print(f"   Tokens per experiment: {args.tokens:,}")
     print(f"   Experiments: {args.experiments}")
     print(f"   Output: {args.output_dir}")
-    print(f"   Compile: {not args.no_compile}")
+    print(f"   Compile: {use_compile}")
     print()
     
     # Validate experiment names
@@ -524,13 +543,26 @@ def main():
             train_loader=train_loader,
             val_loader=val_loader,
             output_dir=exp_output,
-            use_compile=not args.no_compile,
+            use_compile=use_compile,
         )
         all_results.append(result)
         
         # Cleanup between experiments
+        del train_loader
+        del val_loader
+        del result
+        
+        # Clear compilation cache and GPU memory
+        if use_compile:
+            try:
+                torch._dynamo.reset()
+            except:
+                pass
+        
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+            torch.cuda.synchronize()
     
     # Generate comparison report
     report = generate_comparison_report(
