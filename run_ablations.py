@@ -536,16 +536,32 @@ def main():
         
         # Output directory
         exp_output = os.path.join(args.output_dir, f"{args.tokens}tok", exp_name)
+        metrics_path = os.path.join(exp_output, "metrics.json")
         
+        # Resume logic: skip if already finished
+        if os.path.exists(metrics_path):
+            print(f"⏩ [RESUME] Skipping {exp_name} - results found at {metrics_path}")
+            try:
+                with open(metrics_path, 'r') as f:
+                    all_results.append(json.load(f))
+                continue
+            except Exception as e:
+                print(f"⚠️ Error loading existing metrics for {exp_name}: {e}. Re-running...")
+
         # Run experiment
-        result = run_single_experiment(
-            config=config,
-            train_loader=train_loader,
-            val_loader=val_loader,
-            output_dir=exp_output,
-            use_compile=use_compile,
-        )
-        all_results.append(result)
+        try:
+            result = run_single_experiment(
+                config=config,
+                train_loader=train_loader,
+                val_loader=val_loader,
+                output_dir=exp_output,
+                use_compile=use_compile,
+            )
+            all_results.append(result)
+        except Exception as e:
+            print(f"❌ [CRASH] Experiment {exp_name} failed: {e}")
+            print("Moving to next experiment...")
+            continue
         
         # Cleanup between experiments
         del train_loader

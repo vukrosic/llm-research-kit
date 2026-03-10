@@ -12,32 +12,34 @@ coeffs_list = [
 ]
 
 @torch.compile()
-def zeropower_polar_express(G:torch.Tensor, steps: int = 5,):
+def zeropower_polar_express(G: torch.Tensor, steps: int = 5):
     """Polar express as replacement for Newton-Schulz iteration"""
     assert G.ndim >= 2
-    assert steps <= len(coeffs_list)
-
+    
     X = G.bfloat16()
-    # X = G.half()
-
-    transpose_needed = G.size(-2) > G.size(-1) # transposing if tall matrix
+    transpose_needed = G.size(-2) > G.size(-1) 
     if transpose_needed: 
         X = X.mT 
     
-    X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.01 + 1e-7) # safety factor
+    X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.01 + 1e-7)
     
-    coeffs = coeffs_list[:steps]
-    for a , b, c in coeffs:
+    # 1. Use polar express for the first 5 steps (as long as coefficients exist)
+    pe_steps = min(steps, len(coeffs_list))
+    for a, b, c in coeffs_list[:pe_steps]:
         A = X @ X.mT 
         A2 = A @ A 
         B = b * A + c * A2
-        X = a * X + B @ X  # Right-multiplication for left polar factor
+        X = a * X + B @ X
+    
+    # 2. Use Newton-Schulz for any remaining steps
+    for _ in range(steps - pe_steps):
+        A = X @ X.mT
+        X = 0.5 * (3.0 * torch.eye(A.size(-1), device=A.device, dtype=A.dtype) - A) @ X
     
     if transpose_needed: 
         X = X.mT 
     
-    return X # orthogonalized 
-
+    return X
 
 
 

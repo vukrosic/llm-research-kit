@@ -11,7 +11,7 @@ plt.rcParams['figure.facecolor'] = '#121212'
 plt.rcParams['grid.color'] = '#333333'
 
 def generate_live_plots():
-    results_dir = '/root/llm-research-kit/ablation_results/10000tok'
+    results_dir = '/root/llm-research-kit/ablation_results/10000000tok'
     metric_files = glob.glob(os.path.join(results_dir, '**/metrics.json'), recursive=True)
     
     if not metric_files:
