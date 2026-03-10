@@ -1,0 +1,91 @@
+{
+  "experiment_name": "gpt2_style",
+  "ablation_flags": {
+    "use_embed_scale": false,
+    "use_qk_norm": true,
+    "muon_ns_steps": 5,
+    "norm_type": "layernorm",
+    "norm_position": "post",
+    "final_norm_type": "rmsnorm",
+    "ffn_type": "standard",
+    "activation_type": "gelu",
+    "d_ff": 2048,
+    "n_kv_heads": 8,
+    "use_rope": true,
+    "rope_base": 10000.0,
+    "use_bias": true,
+    "parallel_block": false,
+    "residual_scale": 1.0,
+    "n_layers": 22,
+    "d_model": 512,
+    "n_heads": 8,
+    "use_learned_pos": false,
+    "tie_weights": true,
+    "init_scheme": "gpt2",
+    "muon_lr": 0.024,
+    "adamw_lr": 0.006,
+    "muon_momentum": 0.95,
+    "weight_decay": 0.2,
+    "grad_clip": 1.0,
+    "dropout": 0.0,
+    "schedule_type": "constant",
+    "warmup_ratio": 0.0
+  },
+  "final_metrics": {
+    "val_loss": 7.659927654266357,
+    "val_accuracy": 0.04297936003908158,
+    "val_perplexity": 2121.6039340330926,
+    "train_loss": 7.591513633728027
+  },
+  "setup_time_seconds": 4.732956647872925,
+  "active_training_time_seconds": 124.08110904693604,
+  "total_wall_time_seconds": 128.81406569480896,
+  "total_time_minutes": 2.1469010949134826,
+  "actual_steps": 611,
+  "tokens_seen": 10010624,
+  "train_tokens": 10000000,
+  "history": {
+    "steps": [
+      0,
+      100,
+      250,
+      500,
+      611
+    ],
+    "val_losses": [
+      10.793659505844117,
+      7.693254618644715,
+      7.6778199577331545,
+      7.663321561813355,
+      7.659927654266357
+    ],
+    "val_accuracies": [
+      0.00823400097703957,
+      0.03719406448461163,
+      0.04297936003908158,
+      0.03719406448461163,
+      0.04297936003908158
+    ],
+    "val_perplexities": [
+      48710.96831783485,
+      2193.5019698482156,
+      2159.905949286316,
+      2128.8166944341147,
+      2121.6039340330926
+    ],
+    "elapsed_times": [
+      0.15255290269851685,
+      0.4936156034469604,
+      0.9670419534047444,
+      1.7013120969136557,
+      2.0680171688397726
+    ],
+    "learning_rates": [
+      0.024,
+      0.024,
+      0.024,
+      0.024,
+      0.024
+    ]
+  }
+}

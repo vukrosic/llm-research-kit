@@ -1,0 +1,2064 @@
+{
+  "summary": [
+    {
+      "experiment": "rope_base_1M",
+      "val_loss": 4.766110987663269,
+      "val_accuracy": 0.24983695652173912,
+      "val_perplexity": 117.46154314897905,
+      "training_time_min": 1.9253098885218303
+    },
+    {
+      "experiment": "attn_bias",
+      "val_loss": 4.786998171806335,
+      "val_accuracy": 0.24794333170493404,
+      "val_perplexity": 119.94078609724866,
+      "training_time_min": 1.9436790347099304
+    },
+    {
+      "experiment": "parallel_block",
+      "val_loss": 4.769318318367004,
+      "val_accuracy": 0.24965864680019542,
+      "val_perplexity": 117.83888597096212,
+      "training_time_min": 1.898194714387258
+    },
+    {
+      "experiment": "residual_scale_05",
+      "val_loss": 4.73527883052826,
+      "val_accuracy": 0.2536773326819736,
+      "val_perplexity": 113.895211753206,
+      "training_time_min": 1.9282111485799154
+    },
+    {
+      "experiment": "deeper_narrower",
+      "val_loss": 4.840143518447876,
+      "val_accuracy": 0.2439142647777235,
+      "val_perplexity": 126.48750371772037,
+      "training_time_min": 2.081610616048177
+    },
+    {
+      "experiment": "shallower_wider",
+      "val_loss": 4.725703902244568,
+      "val_accuracy": 0.2544754518808012,
+      "val_perplexity": 112.8098775592217,
+      "training_time_min": 1.7691935102144878
+    },
+    {
+      "experiment": "depth_scaled_init",
+      "val_loss": 4.781673455238343,
+      "val_accuracy": 0.2504934049829018,
+      "val_perplexity": 119.30383270940727,
+      "training_time_min": 1.9343692461649578
+    },
+    {
+      "experiment": "gpt2_init",
+      "val_loss": 4.810757493972778,
+      "val_accuracy": 0.2480147777234978,
+      "val_perplexity": 122.82462119822058,
+      "training_time_min": 1.9300442496935526
+    },
+    {
+      "experiment": "small_embed_init",
+      "val_loss": 4.7779539203643795,
+      "val_accuracy": 0.24875244259892526,
+      "val_perplexity": 118.86090220144234,
+      "training_time_min": 1.9296507239341736
+    },
+    {
+      "experiment": "no_weight_tying",
+      "val_loss": 5.048407626152039,
+      "val_accuracy": 0.22965620420127014,
+      "val_perplexity": 155.77421609882848,
+      "training_time_min": 1.9648884693781534
+    },
+    {
+      "experiment": "muon_ns_10",
+      "val_loss": 4.778550114631653,
+      "val_accuracy": 0.24865657059110893,
+      "val_perplexity": 118.93178751854795,
+      "training_time_min": 2.0225118001302085
+    },
+    {
+      "experiment": "low_muon_lr",
+      "val_loss": 4.718209285736084,
+      "val_accuracy": 0.2558561309233024,
+      "val_perplexity": 111.96757111308607,
+      "training_time_min": 1.9221123019854227
+    },
+    {
+      "experiment": "low_adam_lr",
+      "val_loss": 4.778830814361572,
+      "val_accuracy": 0.24761846604787494,
+      "val_perplexity": 118.96517632507849,
+      "training_time_min": 1.9237263838450114
+    },
+    {
+      "experiment": "linear_schedule",
+      "val_loss": 4.727683348655701,
+      "val_accuracy": 0.25177515876893014,
+      "val_perplexity": 113.03339981867985,
+      "training_time_min": 1.9240183432896931
+    },
+    {
+      "experiment": "no_grad_clip",
+      "val_loss": 4.83056565284729,
+      "val_accuracy": 0.2448058133854421,
+      "val_perplexity": 125.28180662639527,
+      "training_time_min": 1.9228602766990661
+    },
+    {
+      "experiment": "dropout_01",
+      "val_loss": 4.853500123023987,
+      "val_accuracy": 0.24263983878847092,
+      "val_perplexity": 128.1882803042209,
+      "training_time_min": 2.661349892616272
+    },
+    {
+      "experiment": "swiglu_post_norm",
+      "val_loss": 7.661641278266907,
+      "val_accuracy": 0.04297936003908158,
+      "val_perplexity": 2125.2426822868474,
+      "training_time_min": 2.20371561050415
+    },
+    {
+      "experiment": "swiglu_layernorm",
+      "val_loss": 4.7053333568573,
+      "val_accuracy": 0.2589820468978994,
+      "val_perplexity": 110.53512644882142,
+      "training_time_min": 2.1310784339904787
+    },
+    {
+      "experiment": "parallel_swiglu",
+      "val_loss": 4.721930022239685,
+      "val_accuracy": 0.255995359062042,
+      "val_perplexity": 112.38494893708831,
+      "training_time_min": 2.102695417404175
+    },
+    {
+      "experiment": "full_mha_swiglu",
+      "val_loss": 4.744231438636779,
+      "val_accuracy": 0.25242916463116755,
+      "val_perplexity": 114.91944890541374,
+      "training_time_min": 2.197764790058136
+    },
+    {
+      "experiment": "gpt2_style",
+      "val_loss": 7.659927654266357,
+      "val_accuracy": 0.04297936003908158,
+      "val_perplexity": 2121.6039340330926,
+      "training_time_min": 2.0680184841156004
+    }
+  ],
+  "all_results": [
+    {
+      "experiment_name": "rope_base_1M",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 1000000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.766110987663269,
+        "val_accuracy": 0.24983695652173912,
+        "val_perplexity": 117.46154314897905,
+        "train_loss": 4.545095443725586
+      },
+      "setup_time_seconds": 6.046013593673706,
+      "active_training_time_seconds": 115.51859331130981,
+      "total_wall_time_seconds": 121.56460690498352,
+      "total_time_minutes": 2.026076781749725,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884721279144287,
+          6.256682300567627,
+          5.487247834205627,
+          4.934300155639648,
+          4.766110987663269
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.14961590131900343,
+          0.20017098192476795,
+          0.23694797264289202,
+          0.24983695652173912
+        ],
+        "val_perplexities": [
+          53354.90962170174,
+          521.4859333148436,
+          241.59139149719348,
+          138.97584702742722,
+          117.46154314897905
+        ],
+        "elapsed_times": [
+          0.1514715830485026,
+          0.4691433350245158,
+          0.9067061344782511,
+          1.5833393216133118,
+          1.925308612982432
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "attn_bias",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": true,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.786998171806335,
+        "val_accuracy": 0.24794333170493404,
+        "val_perplexity": 119.94078609724866,
+        "train_loss": 4.557281970977783
+      },
+      "setup_time_seconds": 5.566500425338745,
+      "active_training_time_seconds": 116.62074208259583,
+      "total_wall_time_seconds": 122.18724250793457,
+      "total_time_minutes": 2.0364540417989097,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.903363437652589,
+          6.2364166688919065,
+          5.4388067388534544,
+          4.922940073013305,
+          4.786998171806335
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15174096238397655,
+          0.20400403028822667,
+          0.23839826575476306,
+          0.24794333170493404
+        ],
+        "val_perplexities": [
+          54358.88940325009,
+          511.0240577759711,
+          230.16736975146253,
+          137.40600358027967,
+          119.94078609724866
+        ],
+        "elapsed_times": [
+          0.1543820103009542,
+          0.475132421652476,
+          0.9166797439257304,
+          1.5991812507311503,
+          1.9436780055363974
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "parallel_block",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": true,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.769318318367004,
+        "val_accuracy": 0.24965864680019542,
+        "val_perplexity": 117.83888597096212,
+        "train_loss": 4.534409046173096
+      },
+      "setup_time_seconds": 5.398665428161621,
+      "active_training_time_seconds": 113.89168286323547,
+      "total_wall_time_seconds": 119.2903482913971,
+      "total_time_minutes": 1.988172471523285,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884713497161865,
+          6.214239010810852,
+          5.433844990730286,
+          4.913467411994934,
+          4.769318318367004
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15325964826575475,
+          0.20331277479237908,
+          0.23891670737664875,
+          0.24965864680019542
+        ],
+        "val_perplexities": [
+          53354.4944163485,
+          499.8154902465567,
+          229.0281657952949,
+          136.11054847689613,
+          117.83888597096212
+        ],
+        "elapsed_times": [
+          0.14832273324330647,
+          0.46194751262664796,
+          0.8937490185101827,
+          1.561380136013031,
+          1.8981935063997903
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "residual_scale_05",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 0.5,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.73527883052826,
+        "val_accuracy": 0.2536773326819736,
+        "val_perplexity": 113.895211753206,
+        "train_loss": 4.526501655578613
+      },
+      "setup_time_seconds": 5.574631690979004,
+      "active_training_time_seconds": 115.69266891479492,
+      "total_wall_time_seconds": 121.26730060577393,
+      "total_time_minutes": 2.0211216767628986,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.880415153503417,
+          6.205415558815003,
+          5.419141716957093,
+          4.9041128778457646,
+          4.73527883052826
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15383121641426478,
+          0.20500122129946263,
+          0.2395933072789448,
+          0.2536773326819736
+        ],
+        "val_perplexities": [
+          53125.65064055893,
+          495.4247913080721,
+          225.68533745454906,
+          134.84323451058407,
+          113.895211753206
+        ],
+        "elapsed_times": [
+          0.15230966011683147,
+          0.47078943649927774,
+          0.9090443968772888,
+          1.5861291845639547,
+          1.9282099564870199
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "deeper_narrower",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 1536,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 32,
+        "d_model": 384,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.840143518447876,
+        "val_accuracy": 0.2439142647777235,
+        "val_perplexity": 126.48750371772037,
+        "train_loss": 4.608436584472656
+      },
+      "setup_time_seconds": 5.3650596141815186,
+      "active_training_time_seconds": 124.89663696289062,
+      "total_wall_time_seconds": 130.26169657707214,
+      "total_time_minutes": 2.171028276284536,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.891029596328735,
+          6.281758303642273,
+          5.542481203079223,
+          4.981228132247924,
+          4.840143518447876
+        ],
+        "val_accuracies": [
+          0.008233390327308255,
+          0.15028395212506107,
+          0.19627686858817783,
+          0.23394785051294578,
+          0.2439142647777235
+        ],
+        "val_perplexities": [
+          53692.55317655674,
+          534.7280520001741,
+          255.31069188963508,
+          145.65315318803863,
+          126.48750371772037
+        ],
+        "elapsed_times": [
+          0.18279403050740559,
+          0.5208836833635966,
+          0.9889670332272847,
+          1.7187485655148824,
+          2.0816096663475037
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "shallower_wider",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2304,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 14,
+        "d_model": 576,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.725703902244568,
+        "val_accuracy": 0.2544754518808012,
+        "val_perplexity": 112.8098775592217,
+        "train_loss": 4.519187927246094
+      },
+      "setup_time_seconds": 3.5152246952056885,
+      "active_training_time_seconds": 106.15161061286926,
+      "total_wall_time_seconds": 109.66683530807495,
+      "total_time_minutes": 1.827780588467916,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.863837995529174,
+          6.204241242408752,
+          5.410446705818177,
+          4.9063604545593265,
+          4.725703902244568
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15480825598436737,
+          0.20612725940400586,
+          0.23920188080117244,
+          0.2544754518808012
+        ],
+        "val_perplexities": [
+          52252.23769085059,
+          494.84334731400514,
+          223.73150752761796,
+          135.14664586687485,
+          112.8098775592217
+        ],
+        "elapsed_times": [
+          0.12132593393325805,
+          0.4163610140482585,
+          0.8229393720626831,
+          1.4522591869036356,
+          1.7691924889882407
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "depth_scaled_init",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "depth_scaled",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.781673455238343,
+        "val_accuracy": 0.2504934049829018,
+        "val_perplexity": 119.30383270940727,
+        "train_loss": 4.574868202209473
+      },
+      "setup_time_seconds": 4.386168718338013,
+      "active_training_time_seconds": 116.06215476989746,
+      "total_wall_time_seconds": 120.44832348823547,
+      "total_time_minutes": 2.007472058137258,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.80806206703186,
+          6.331834254264831,
+          5.477994527816772,
+          4.955411992073059,
+          4.781673455238343
+        ],
+        "val_accuracies": [
+          0.0005135564240351734,
+          0.14850024425989253,
+          0.20310271128480703,
+          0.23656631656082072,
+          0.2504934049829018
+        ],
+        "val_perplexities": [
+          49417.60751163286,
+          562.1868423084603,
+          239.36618347408734,
+          141.94107292514008,
+          119.30383270940727
+        ],
+        "elapsed_times": [
+          0.15223238865534464,
+          0.47042882442474365,
+          0.9094058036804199,
+          1.5884024580319722,
+          1.9343679745992024
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "gpt2_init",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "gpt2",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.810757493972778,
+        "val_accuracy": 0.2480147777234978,
+        "val_perplexity": 122.82462119822058,
+        "train_loss": 4.604788780212402
+      },
+      "setup_time_seconds": 5.533843755722046,
+      "active_training_time_seconds": 115.80265498161316,
+      "total_wall_time_seconds": 121.3364987373352,
+      "total_time_minutes": 2.0222749789555867,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.805324659347534,
+          6.364583683013916,
+          5.517264637947083,
+          4.979345178604126,
+          4.810757493972778
+        ],
+        "val_accuracies": [
+          8.793356130923302e-05,
+          0.146980947728383,
+          0.20043111871030778,
+          0.23435881778212017,
+          0.2480147777234978
+        ],
+        "val_perplexities": [
+          49282.5163572292,
+          580.9029382085937,
+          248.95312804127255,
+          145.37915309820215,
+          122.82462119822058
+        ],
+        "elapsed_times": [
+          0.1514316201210022,
+          0.4697999278704325,
+          0.9087296883265178,
+          1.5873744209607443,
+          1.9300431172053019
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "small_embed_init",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "small_embed",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.7779539203643795,
+        "val_accuracy": 0.24875244259892526,
+        "val_perplexity": 118.86090220144234,
+        "train_loss": 4.542606830596924
+      },
+      "setup_time_seconds": 5.413994073867798,
+      "active_training_time_seconds": 115.77904343605042,
+      "total_wall_time_seconds": 121.19303750991821,
+      "total_time_minutes": 2.019883958498637,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.219845433235168,
+          5.43317334651947,
+          4.919555311203003,
+          4.7779539203643795
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.1528718856863703,
+          0.20478077674645823,
+          0.2384898632144602,
+          0.24875244259892526
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          502.62553681269816,
+          228.87439200004508,
+          136.94170320322294,
+          118.86090220144234
+        ],
+        "elapsed_times": [
+          0.15197113752365113,
+          0.4704365015029907,
+          0.9090559442838033,
+          1.5869413932164511,
+          1.9296494483947755
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "no_weight_tying",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": false,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 5.048407626152039,
+        "val_accuracy": 0.22965620420127014,
+        "val_perplexity": 155.77421609882848,
+        "train_loss": 4.801352024078369
+      },
+      "setup_time_seconds": 5.307614088058472,
+      "active_training_time_seconds": 117.89330816268921,
+      "total_wall_time_seconds": 123.20092225074768,
+      "total_time_minutes": 2.053348704179128,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.909295902252197,
+          6.640491762161255,
+          5.825834503173828,
+          5.221405649185181,
+          5.048407626152039
+        ],
+        "val_accuracies": [
+          1.5876893014167075e-05,
+          0.13477711284807034,
+          0.16899120664386907,
+          0.2177210552027357,
+          0.22965620420127014
+        ],
+        "val_perplexities": [
+          54682.33004177735,
+          765.4713303140072,
+          338.94386482219426,
+          185.19431944253887,
+          155.77421609882848
+        ],
+        "elapsed_times": [
+          0.15278481245040892,
+          0.47661075592041013,
+          0.9233518997828166,
+          1.6160069863001505,
+          1.9648872892061868
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "muon_ns_10",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 10,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.778550114631653,
+        "val_accuracy": 0.24865657059110893,
+        "val_perplexity": 118.93178751854795,
+        "train_loss": 4.542595386505127
+      },
+      "setup_time_seconds": 8.352284908294678,
+      "active_training_time_seconds": 121.3507080078125,
+      "total_wall_time_seconds": 129.70299291610718,
+      "total_time_minutes": 2.1617165486017864,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.225906324386597,
+          5.443478021621704,
+          4.928577408790589,
+          4.778550114631653
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.1517568392769907,
+          0.20403395212506106,
+          0.2375690034196385,
+          0.24865657059110893
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          505.6811459847194,
+          231.24506176197315,
+          138.18279481962662,
+          118.93178751854795
+        ],
+        "elapsed_times": [
+          0.16352535088857015,
+          0.4955054044723511,
+          0.954003655910492,
+          1.6655035734176635,
+          2.0225105325380963
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "low_muon_lr",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.012,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.718209285736084,
+        "val_accuracy": 0.2558561309233024,
+        "val_perplexity": 111.96757111308607,
+        "train_loss": 4.50494909286499
+      },
+      "setup_time_seconds": 5.443821907043457,
+      "active_training_time_seconds": 115.32673811912537,
+      "total_wall_time_seconds": 120.77056002616882,
+      "total_time_minutes": 2.012842667102814,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.209059672355652,
+          5.4306625509262085,
+          4.899596157073975,
+          4.718209285736084
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15276929653150953,
+          0.20402601367855397,
+          0.2402638006839277,
+          0.2558561309233024
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          497.2334690103669,
+          228.30045600469714,
+          134.23555865649857,
+          111.96757111308607
+        ],
+        "elapsed_times": [
+          0.14606957038243612,
+          0.4646575411160787,
+          0.9027873237927755,
+          1.5801297982533773,
+          1.922110875447591
+        ],
+        "learning_rates": [
+          0.012,
+          0.012,
+          0.012,
+          0.012,
+          0.012
+        ]
+      }
+    },
+    {
+      "experiment_name": "low_adam_lr",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.003,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.778830814361572,
+        "val_accuracy": 0.24761846604787494,
+        "val_perplexity": 118.96517632507849,
+        "train_loss": 4.547638893127441
+      },
+      "setup_time_seconds": 4.258071422576904,
+      "active_training_time_seconds": 115.42358303070068,
+      "total_wall_time_seconds": 119.68165445327759,
+      "total_time_minutes": 1.9946942408879598,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.225577349662781,
+          5.4637937307357785,
+          4.923854908943176,
+          4.778830814361572
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.1540138006839277,
+          0.2022844406448461,
+          0.23790363947239862,
+          0.24761846604787494
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          505.5148170298912,
+          235.99101463865645,
+          137.53176504611758,
+          118.96517632507849
+        ],
+        "elapsed_times": [
+          0.14710930585861207,
+          0.4657205621401469,
+          0.9041500687599182,
+          1.5817566712697346,
+          1.9237251281738281
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "linear_schedule",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "linear",
+        "warmup_ratio": 0.02
+      },
+      "final_metrics": {
+        "val_loss": 4.727683348655701,
+        "val_accuracy": 0.25177515876893014,
+        "val_perplexity": 113.03339981867985,
+        "train_loss": 4.486662864685059
+      },
+      "setup_time_seconds": 4.3372297286987305,
+      "active_training_time_seconds": 115.44110059738159,
+      "total_wall_time_seconds": 119.77833032608032,
+      "total_time_minutes": 1.9963055054346721,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.244114093780517,
+          5.423997669219971,
+          4.828940672874451,
+          4.727683348655701
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15151624328285296,
+          0.2040009770395701,
+          0.24402112848070348,
+          0.25177515876893014
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          514.9728051731856,
+          226.78391985276275,
+          125.07839151716638,
+          113.03339981867985
+        ],
+        "elapsed_times": [
+          0.14755197366078696,
+          0.46581435600916543,
+          0.904029353459676,
+          1.5818306883176168,
+          1.924017107486725
+        ],
+        "learning_rates": [
+          0.002,
+          0.02042809364548495,
+          0.014408026755852841,
+          0.004374581939799331,
+          0.0024000000000000002
+        ]
+      }
+    },
+    {
+      "experiment_name": "no_grad_clip",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1000000000.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.83056565284729,
+        "val_accuracy": 0.2448058133854421,
+        "val_perplexity": 125.28180662639527,
+        "train_loss": 4.590209007263184
+      },
+      "setup_time_seconds": 4.85539174079895,
+      "active_training_time_seconds": 115.37161660194397,
+      "total_wall_time_seconds": 120.22700834274292,
+      "total_time_minutes": 2.0037834723790486,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.241202883720398,
+          5.4864544010162355,
+          4.965715589523316,
+          4.83056565284729
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15178920371275037,
+          0.20090925744992671,
+          0.23511785539814362,
+          0.2448058133854421
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          513.4757912803138,
+          241.3997808940664,
+          143.41113707116236,
+          125.28180662639527
+        ],
+        "elapsed_times": [
+          0.14689715305964152,
+          0.46555646260579425,
+          0.9037015954653422,
+          1.580972675482432,
+          1.922858993212382
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "dropout_01",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.1,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.853500123023987,
+        "val_accuracy": 0.24263983878847092,
+        "val_perplexity": 128.1882803042209,
+        "train_loss": 4.709470748901367
+      },
+      "setup_time_seconds": 56.3519287109375,
+      "active_training_time_seconds": 159.68099355697632,
+      "total_wall_time_seconds": 216.03292226791382,
+      "total_time_minutes": 3.6005487044652305,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.884659748077393,
+          6.263994369506836,
+          5.527017664909363,
+          4.998534879684448,
+          4.853500123023987
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15014044943820223,
+          0.19735955056179774,
+          0.2324743527112848,
+          0.24263983878847092
+        ],
+        "val_perplexities": [
+          53351.62673818938,
+          525.3130494266805,
+          251.39305360052776,
+          148.1958751804925,
+          128.1882803042209
+        ],
+        "elapsed_times": [
+          0.8482073704401653,
+          1.1721716523170471,
+          1.6192742665608724,
+          2.312271257241567,
+          2.6613486687342327
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "swiglu_post_norm",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "layernorm",
+        "norm_position": "post",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "swiglu",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 7.661641278266907,
+        "val_accuracy": 0.04297936003908158,
+        "val_perplexity": 2125.2426822868474,
+        "train_loss": 7.585515975952148
+      },
+      "setup_time_seconds": 4.723517894744873,
+      "active_training_time_seconds": 132.22293663024902,
+      "total_wall_time_seconds": 136.9464545249939,
+      "total_time_minutes": 2.2824409087498982,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          11.037665748596192,
+          7.704921374320984,
+          7.67783935546875,
+          7.662529835700989,
+          7.661641278266907
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.03719406448461163,
+          0.04297936003908158,
+          0.04297936003908158,
+          0.04297936003908158
+        ],
+        "val_perplexities": [
+          62172.35637051522,
+          2219.242885922695,
+          2159.9478469771902,
+          2127.1319216959805,
+          2125.2426822868474
+        ],
+        "elapsed_times": [
+          0.15900816122690836,
+          0.5230953454971313,
+          1.027818485101064,
+          1.8118449171384177,
+          2.203714434305827
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "swiglu_layernorm",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "layernorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "swiglu",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.7053333568573,
+        "val_accuracy": 0.2589820468978994,
+        "val_perplexity": 110.53512644882142,
+        "train_loss": 4.486895561218262
+      },
+      "setup_time_seconds": 4.607744932174683,
+      "active_training_time_seconds": 127.86470603942871,
+      "total_wall_time_seconds": 132.4724509716034,
+      "total_time_minutes": 2.2078741828600568,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.860558929443359,
+          6.268189005851745,
+          5.4375268173217775,
+          4.888751449584961,
+          4.7053333568573
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15213116756228628,
+          0.2057492672203224,
+          0.2418209574987787,
+          0.2589820468978994
+        ],
+        "val_perplexities": [
+          52081.17975873432,
+          527.5211745395293,
+          229.8729620286115,
+          132.78767839731492,
+          110.53512644882142
+        ],
+        "elapsed_times": [
+          0.15771746635437012,
+          0.5098528861999512,
+          0.9966456135114033,
+          1.7518898129463196,
+          2.1310769240061442
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "parallel_swiglu",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "swiglu",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": true,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.721930022239685,
+        "val_accuracy": 0.255995359062042,
+        "val_perplexity": 112.38494893708831,
+        "train_loss": 4.504350185394287
+      },
+      "setup_time_seconds": 4.333540439605713,
+      "active_training_time_seconds": 126.16172504425049,
+      "total_wall_time_seconds": 130.4952654838562,
+      "total_time_minutes": 2.174921091397603,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.862920970916749,
+          6.245289444923401,
+          5.435022406578064,
+          4.897652616500855,
+          4.721930022239685
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15447911577918905,
+          0.20534013190034198,
+          0.24081399609184173,
+          0.255995359062042
+        ],
+        "val_perplexities": [
+          52204.34306646482,
+          515.5784348923706,
+          229.29798600141197,
+          133.97491976506808,
+          112.38494893708831
+        ],
+        "elapsed_times": [
+          0.15067383050918579,
+          0.4982292930285136,
+          0.9794229666392008,
+          1.7274464090665183,
+          2.102694094181061
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "full_mha_swiglu",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "pre",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "swiglu",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 8,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": false,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 4.744231438636779,
+        "val_accuracy": 0.25242916463116755,
+        "val_perplexity": 114.91944890541374,
+        "train_loss": 4.517930030822754
+      },
+      "setup_time_seconds": 4.6617608070373535,
+      "active_training_time_seconds": 131.86588740348816,
+      "total_wall_time_seconds": 136.5276482105255,
+      "total_time_minutes": 2.2754608035087585,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.877473735809327,
+          6.247002220153808,
+          5.4301495885849,
+          4.901861371994019,
+          4.744231438636779
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.15709208597948218,
+          0.20616206643869076,
+          0.24074560332193454,
+          0.25242916463116755
+        ],
+        "val_perplexities": [
+          52969.61550650732,
+          516.4622615471214,
+          228.18337649951897,
+          134.53997570161528,
+          114.91944890541374
+        ],
+        "elapsed_times": [
+          0.15704525709152223,
+          0.5201578100522359,
+          1.0234832088152568,
+          1.806061855951945,
+          2.197763470808665
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    },
+    {
+      "experiment_name": "gpt2_style",
+      "ablation_flags": {
+        "use_embed_scale": false,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "layernorm",
+        "norm_position": "post",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "standard",
+        "activation_type": "gelu",
+        "d_ff": 2048,
+        "n_kv_heads": 8,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": true,
+        "parallel_block": false,
+        "residual_scale": 1.0,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "gpt2",
+        "muon_lr": 0.024,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "constant",
+        "warmup_ratio": 0.0
+      },
+      "final_metrics": {
+        "val_loss": 7.659927654266357,
+        "val_accuracy": 0.04297936003908158,
+        "val_perplexity": 2121.6039340330926,
+        "train_loss": 7.591513633728027
+      },
+      "setup_time_seconds": 4.732956647872925,
+      "active_training_time_seconds": 124.08110904693604,
+      "total_wall_time_seconds": 128.81406569480896,
+      "total_time_minutes": 2.1469010949134826,
+      "actual_steps": 611,
+      "tokens_seen": 10010624,
+      "train_tokens": 10000000,
+      "history": {
+        "steps": [
+          0,
+          100,
+          250,
+          500,
+          611
+        ],
+        "val_losses": [
+          10.793659505844117,
+          7.693254618644715,
+          7.6778199577331545,
+          7.663321561813355,
+          7.659927654266357
+        ],
+        "val_accuracies": [
+          0.00823400097703957,
+          0.03719406448461163,
+          0.04297936003908158,
+          0.03719406448461163,
+          0.04297936003908158
+        ],
+        "val_perplexities": [
+          48710.96831783485,
+          2193.5019698482156,
+          2159.905949286316,
+          2128.8166944341147,
+          2121.6039340330926
+        ],
+        "elapsed_times": [
+          0.15255290269851685,
+          0.4936156034469604,
+          0.9670419534047444,
+          1.7013120969136557,
+          2.0680171688397726
+        ],
+        "learning_rates": [
+          0.024,
+          0.024,
+          0.024,
+          0.024,
+          0.024
+        ]
+      }
+    }
+  ]
+}
