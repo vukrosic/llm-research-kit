@@ -341,14 +341,14 @@ def train_model(
         
         
         # Save model checkpoint
-        checkpoint_path = output_path / "model.pt"
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'config': config,
-            'metrics': final_eval,
-            'step': step,
-        }, checkpoint_path)
-        print(f"   💾 Model saved to {checkpoint_path}")
+        # checkpoint_path = output_path / "model.pt"
+        # torch.save({
+        #     'model_state_dict': model.state_dict(),
+        #     'config': config,
+        #     'metrics': final_eval,
+        #     'step': step,
+        # }, checkpoint_path)
+        # print(f"   💾 Model saved to {checkpoint_path}")
     
     return {
         'model': model,
@@ -639,12 +639,12 @@ def train_minimal_llm(
             json.dump(metrics_data, f, indent=2)
             
         # Save model
-        checkpoint_path = output_path / "model.pt"
-        torch.save({
-            'model_state_dict': results['model'].state_dict(),
-            'config': config,
-            'metrics': final_eval,
-        }, checkpoint_path)
+        # checkpoint_path = output_path / "model.pt"
+        # torch.save({
+        #     'model_state_dict': results['model'].state_dict(),
+        #     'config': config,
+        #     'metrics': final_eval,
+        # }, checkpoint_path)
         
     
     # Final Output
