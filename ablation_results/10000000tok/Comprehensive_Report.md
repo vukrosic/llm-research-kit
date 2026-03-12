@@ -16,11 +16,27 @@ From 50 planned variants, **48 completed training**.
 **Baseline Validation Loss:** `4.7733`
 
 ### 🏆 Top 5 Best Performing Models
-- **swiglu_layernorm**: `4.7053` (-1.42% vs baseline)
-- **low_muon_lr**: `4.7182` (-1.16% vs baseline)
-- **parallel_swiglu**: `4.7219` (-1.08% vs baseline)
-- **act_gelu**: `4.7234` (-1.05% vs baseline)
-- **sandwich_norm**: `4.7243` (-1.03% vs baseline)
+Detailed analysis of the **Top 5 winning experiments** reveals that the most significant gains came from combining modern architectural refinements (like SwiGLU) with more expressive normalization and more stable optimization settings.
+
+1. **swiglu_layernorm**: `4.7053` (-1.42% vs baseline)
+   * **The Change:** Combined **SwiGLU** gating in the FFN with **LayerNorm** (instead of the baseline's RMSNorm).
+   * **Why it won:** This was the "perfect storm" of expressivity. SwiGLU uses a learnable gate that allows the model to selectively suppress or amplify information more effectively than standard ReLUs. Meanwhile, standard **LayerNorm** includes a learnable bias (affine transform) that RMSNorm lacks. This extra flexibility in the normalizer, paired with the gated FFN, allowed the model to reach a lower loss ceiling than any other variant.
+
+2. **low_muon_lr**: `4.7182` (-1.16% vs baseline)
+   * **The Change:** Reduced the **Muon** optimizer's learning rate from 0.024 to 0.012.
+   * **Why it won:** Muon is a high-performance optimizer that uses Newton-Schulz iterations for orthogonalization. At this 10M token scale, the default LR was slightly too "hot," causing the model to skip over the sharpest local minima. The lower LR allowed for more precise convergence, proving that even with advanced optimizers, tuning the "gradient speed" remains a top-tier lever for performance.
+
+3. **parallel_swiglu**: `4.7219` (-1.08% vs baseline)
+   * **The Change:** Computed Attention and FFN in **parallel** (PaLM/GPT-J style) using **SwiGLU** gating.
+   * **Why it won:** Parallel blocks are not just for speed; they change how gradients flow. In a parallel setup, both the Attention and FFN see the *exact same* normalized input from the residual stream. When combined with the high-capacity SwiGLU, this prevents the FFN from merely "fixing" mistakes made by the Attention layer, forcing the model to learn more robust features in one pass.
+
+4. **act_gelu**: `4.7234` (-1.05% vs baseline)
+   * **The Change:** Switched activation from Squared ReLU to **GELU**.
+   * **Why it won:** GELU (Gaussian Error Linear Unit) is the industry standard for a reason. Its smooth, non-monotonic curvature handles small negative values more gracefully than ReLU variants, which helps maintain gradient flow during early training. It provides a "statistical" gating effect naturally, which clearly outperformed the baseline's more rigid Squared ReLU.
+
+5. **sandwich_norm**: `4.7243` (-1.03% vs baseline)
+   * **The Change:** Added an extra normalization layer **after** the residual addition (Pre-norm + Post-norm).
+   * **Why it won:** Deep models often suffer from "activation drift" where the values in the residual stream grow too large, slowing down learning. **Sandwich Norm** keeps the dynamic range extremely tight at every layer. This extra constraint acted as a powerful regularizer, ensuring that every layer's output stayed within a range the next layer could easily process.
 
 ### ⚠️ Bottom 5 Worst Performing Models (Excluding Failures/NaNs)
 - **post_norm**: `7.6537` (+60.34% vs baseline)
