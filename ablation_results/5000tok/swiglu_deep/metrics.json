@@ -1,0 +1,73 @@
+{
+  "experiment_name": "swiglu_deep",
+  "ablation_flags": {
+    "use_embed_scale": true,
+    "use_qk_norm": true,
+    "muon_ns_steps": 5,
+    "norm_type": "rmsnorm",
+    "norm_position": "pre",
+    "final_norm_type": "rmsnorm",
+    "ffn_type": "swiglu_deep",
+    "activation_type": "squared_relu",
+    "d_ff": 2048,
+    "n_kv_heads": 4,
+    "use_rope": true,
+    "rope_base": 10000.0,
+    "use_bias": false,
+    "parallel_block": false,
+    "residual_scale": 1.0,
+    "n_layers": 22,
+    "d_model": 512,
+    "n_heads": 8,
+    "use_learned_pos": false,
+    "tie_weights": true,
+    "init_scheme": "default",
+    "muon_lr": 0.024,
+    "adamw_lr": 0.006,
+    "muon_momentum": 0.95,
+    "weight_decay": 0.2,
+    "grad_clip": 1.0,
+    "dropout": 0.0,
+    "schedule_type": "constant",
+    "warmup_ratio": 0.0
+  },
+  "final_metrics": {
+    "val_loss": 11.22459153175354,
+    "val_accuracy": 0.00823400097703957,
+    "val_perplexity": 74951.12637376219,
+    "train_loss": 11.25384521484375
+  },
+  "setup_time_seconds": 2.8486180305480957,
+  "active_training_time_seconds": 13.930430889129639,
+  "total_wall_time_seconds": 16.779048919677734,
+  "total_time_minutes": 0.27965081532796227,
+  "actual_steps": 1,
+  "tokens_seen": 16384,
+  "train_tokens": 5000,
+  "history": {
+    "steps": [
+      0,
+      1
+    ],
+    "val_losses": [
+      11.22459153175354,
+      11.22459153175354
+    ],
+    "val_accuracies": [
+      0.00823400097703957,
+      0.00823400097703957
+    ],
+    "val_perplexities": [
+      74951.12637376219,
+      74951.12637376219
+    ],
+    "elapsed_times": [
+      0.12162996133168538,
+      0.23217262824376425
+    ],
+    "learning_rates": [
+      0.024,
+      0.024
+    ]
+  }
+}

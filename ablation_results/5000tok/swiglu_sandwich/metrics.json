@@ -1,0 +1,73 @@
+{
+  "experiment_name": "swiglu_sandwich",
+  "ablation_flags": {
+    "use_embed_scale": true,
+    "use_qk_norm": true,
+    "muon_ns_steps": 5,
+    "norm_type": "rmsnorm",
+    "norm_position": "sandwich",
+    "final_norm_type": "rmsnorm",
+    "ffn_type": "swiglu",
+    "activation_type": "squared_relu",
+    "d_ff": 2048,
+    "n_kv_heads": 4,
+    "use_rope": true,
+    "rope_base": 10000.0,
+    "use_bias": false,
+    "parallel_block": false,
+    "residual_scale": 1.0,
+    "n_layers": 22,
+    "d_model": 512,
+    "n_heads": 8,
+    "use_learned_pos": false,
+    "tie_weights": true,
+    "init_scheme": "default",
+    "muon_lr": 0.024,
+    "adamw_lr": 0.006,
+    "muon_momentum": 0.95,
+    "weight_decay": 0.2,
+    "grad_clip": 1.0,
+    "dropout": 0.0,
+    "schedule_type": "constant",
+    "warmup_ratio": 0.0
+  },
+  "final_metrics": {
+    "val_loss": 10.871644916534423,
+    "val_accuracy": 3.419638495359062e-05,
+    "val_perplexity": 52661.763269793955,
+    "train_loss": 10.861279487609863
+  },
+  "setup_time_seconds": 0.9979424476623535,
+  "active_training_time_seconds": 15.891686201095581,
+  "total_wall_time_seconds": 16.889628648757935,
+  "total_time_minutes": 0.28149381081263225,
+  "actual_steps": 1,
+  "tokens_seen": 16384,
+  "train_tokens": 5000,
+  "history": {
+    "steps": [
+      0,
+      1
+    ],
+    "val_losses": [
+      10.871644916534423,
+      10.871644916534423
+    ],
+    "val_accuracies": [
+      3.419638495359062e-05,
+      3.419638495359062e-05
+    ],
+    "val_perplexities": [
+      52661.763269793955,
+      52661.763269793955
+    ],
+    "elapsed_times": [
+      0.1383359432220459,
+      0.26486013730367025
+    ],
+    "learning_rates": [
+      0.024,
+      0.024
+    ]
+  }
+}

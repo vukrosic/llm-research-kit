@@ -418,6 +418,226 @@ class GPT2StyleConfig(BaselineConfig):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+#  SWIGLU VARIATIONS (20 experiments)
+#  All inherit from BaselineConfig; only ffn_type (and occasionally a
+#  second flag) changes.
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── 1. Hidden-dimension scaling ──────────────────────────────────────────
+
+@dataclass
+class SwiGLUNarrowConfig(BaselineConfig):
+    """SwiGLU with hidden = d_ff × ½ — very parameter-efficient gated FFN."""
+    experiment_name: str = "swiglu_narrow"
+    ffn_type: str = "swiglu_narrow"
+
+@dataclass
+class SwiGLUThreeQuarterConfig(BaselineConfig):
+    """SwiGLU with hidden = d_ff × ¾ — slightly wider than the 2/3 baseline."""
+    experiment_name: str = "swiglu_3q"
+    ffn_type: str = "swiglu_3q"
+
+@dataclass
+class SwiGLUFullWidthConfig(BaselineConfig):
+    """SwiGLU with hidden = d_ff × 1 — un-compressed; ~50% more FFN params."""
+    experiment_name: str = "swiglu_full"
+    ffn_type: str = "swiglu_full"
+
+@dataclass
+class SwiGLUWideConfig(BaselineConfig):
+    """SwiGLU with hidden = 8/3 × d_model — true LLaMA hidden-dim ratio."""
+    experiment_name: str = "swiglu_wide"
+    ffn_type: str = "swiglu_wide"
+
+# ── 2. Alternative gate activations ──────────────────────────────────────
+
+@dataclass
+class GeGLUConfig(BaselineConfig):
+    """GeGLU: GELU gate × linear branch (Shazeer 2020)."""
+    experiment_name: str = "geglu"
+    ffn_type: str = "geglu"
+
+@dataclass
+class ReGLUConfig(BaselineConfig):
+    """ReGLU: ReLU gate × linear branch (sparse gating)."""
+    experiment_name: str = "reglu"
+    ffn_type: str = "reglu"
+
+# ── 3. Architectural novelties inside the FFN ────────────────────────────
+
+@dataclass
+class SwiGLUDualGateConfig(BaselineConfig):
+    """SwiGLU with two independent SiLU gates × linear branch."""
+    experiment_name: str = "swiglu_dual_gate"
+    ffn_type: str = "swiglu_dual_gate"
+
+@dataclass
+class SwiGLUResidualConfig(BaselineConfig):
+    """SwiGLU + inner linear residual: gated_out + linear(x)."""
+    experiment_name: str = "swiglu_residual"
+    ffn_type: str = "swiglu_residual"
+
+@dataclass
+class SwiGLUSharedGateConfig(BaselineConfig):
+    """SwiGLU where gate and up projections share one fused Linear (chunk)."""
+    experiment_name: str = "swiglu_shared_gate"
+    ffn_type: str = "swiglu_shared_gate"
+
+@dataclass
+class SwiGLUDeepConfig(BaselineConfig):
+    """Two sequential SwiGLU sub-layers with residuals inside the FFN block."""
+    experiment_name: str = "swiglu_deep"
+    ffn_type: str = "swiglu_deep"
+
+@dataclass
+class SwiGLUSwiGLUConfig(BaselineConfig):
+    """Sequential SwiGLU (no inner residual): stage-1 output feeds stage-2."""
+    experiment_name: str = "swiglu_swiglu"
+    ffn_type: str = "swiglu_swiglu"
+
+@dataclass
+class SwiGLUBiasConfig(BaselineConfig):
+    """Standard SwiGLU (2/3 hidden) but with bias on all projections."""
+    experiment_name: str = "swiglu_bias"
+    ffn_type: str = "swiglu_bias"
+
+# ── 4. SwiGLU combined with other ablation axes ──────────────────────────
+
+@dataclass
+class SwiGLUParallelConfig(BaselineConfig):
+    """SwiGLU FFN inside a PaLM-style parallel block."""
+    experiment_name: str = "swiglu_parallel"
+    ffn_type: str = "swiglu"
+    parallel_block: bool = True
+
+@dataclass
+class SwiGLUSandwichNormConfig(BaselineConfig):
+    """SwiGLU + Sandwich norm (pre+post normalisation per sub-layer)."""
+    experiment_name: str = "swiglu_sandwich"
+    ffn_type: str = "swiglu"
+    norm_position: str = "sandwich"
+
+@dataclass
+class SwiGLUMQAConfig(BaselineConfig):
+    """SwiGLU + Multi-Query Attention (single KV head)."""
+    experiment_name: str = "swiglu_mqa"
+    ffn_type: str = "swiglu"
+    n_kv_heads: int = 1
+
+@dataclass
+class SwiGLUDepthScaledInitConfig(BaselineConfig):
+    """SwiGLU + depth-scaled weight init (std ∝ 1/√n_layers)."""
+    experiment_name: str = "swiglu_depth_init"
+    ffn_type: str = "swiglu"
+    init_scheme: str = "depth_scaled"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  SCISPACE-INSPIRED GLU VARIATIONS (20 experiments)
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class ScispaceSinGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_singlu"
+    ffn_type: str = "scispace_singlu"
+
+@dataclass
+class ScispaceTanhGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_tanhglu"
+    ffn_type: str = "scispace_tanhglu"
+
+@dataclass
+class ScispaceSigmoidGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_sigmoidglu"
+    ffn_type: str = "scispace_sigmoidglu"
+
+@dataclass
+class ScispaceSoftplusGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_softplusglu"
+    ffn_type: str = "scispace_softplusglu"
+
+@dataclass
+class ScispaceELUGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_eluglu"
+    ffn_type: str = "scispace_eluglu"
+
+@dataclass
+class ScispaceCELUGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_celuglu"
+    ffn_type: str = "scispace_celuglu"
+
+@dataclass
+class ScispaceHardswishGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_hardswishglu"
+    ffn_type: str = "scispace_hardswishglu"
+
+@dataclass
+class ScispaceLaplaceGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_laplaceglu"
+    ffn_type: str = "scispace_laplaceglu"
+
+@dataclass
+class ScispaceSinCosGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_sincosglu"
+    ffn_type: str = "scispace_sincosglu"
+
+@dataclass
+class ScispaceSingleProjGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_singleprojglu"
+    ffn_type: str = "scispace_singleprojglu"
+
+@dataclass
+class ScispaceTripleProjGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_tripleprojglu"
+    ffn_type: str = "scispace_tripleprojglu"
+
+@dataclass
+class ScispacePreGateGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_pregatelu"
+    ffn_type: str = "scispace_pregatelu"
+
+@dataclass
+class ScispacePostGateGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_postgatelu"
+    ffn_type: str = "scispace_postgatelu"
+
+@dataclass
+class ScispaceTopKGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_topkglu"
+    ffn_type: str = "scispace_topkglu"
+
+@dataclass
+class ScispaceLeakyGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_leakyglu"
+    ffn_type: str = "scispace_leakyglu"
+
+@dataclass
+class ScispaceAsymGLUConfig(BaselineConfig):
+    experiment_name: str = "scispace_asymglu"
+    ffn_type: str = "scispace_asymglu"
+
+@dataclass
+class ScispacePrenormDownConfig(BaselineConfig):
+    experiment_name: str = "scispace_prenormdown"
+    ffn_type: str = "scispace_prenormdown"
+
+@dataclass
+class ScispaceScaleGateConfig(BaselineConfig):
+    experiment_name: str = "scispace_scalegate"
+    ffn_type: str = "scispace_scalegate"
+
+@dataclass
+class ScispaceCompositeConfig(BaselineConfig):
+    experiment_name: str = "scispace_composite"
+    ffn_type: str = "scispace_composite"
+
+@dataclass
+class ScispaceMoELiteConfig(BaselineConfig):
+    experiment_name: str = "scispace_moelite"
+    ffn_type: str = "scispace_moelite"
+
+
+# ══════════════════════════════════════════════════════════════════════════
 #  REGISTRY
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -491,10 +711,54 @@ ABLATION_CONFIGS = {
     "parallel_swiglu":    ParallelSwiGLUConfig,
     "full_mha_swiglu":    FullMHASwiGLUConfig,
     "gpt2_style":         GPT2StyleConfig,
+
+    # ── SwiGLU Variations (16) ────────────────────────────────────────
+    # Hidden-dim scaling
+    "swiglu_narrow":      SwiGLUNarrowConfig,
+    "swiglu_3q":          SwiGLUThreeQuarterConfig,
+    "swiglu_full":        SwiGLUFullWidthConfig,
+    "swiglu_wide":        SwiGLUWideConfig,
+    # Alternative gate activations
+    "geglu":              GeGLUConfig,
+    "reglu":              ReGLUConfig,
+    # Architectural novelties
+    "swiglu_dual_gate":   SwiGLUDualGateConfig,
+    "swiglu_residual":    SwiGLUResidualConfig,
+    "swiglu_shared_gate": SwiGLUSharedGateConfig,
+    "swiglu_deep":        SwiGLUDeepConfig,
+    "swiglu_swiglu":      SwiGLUSwiGLUConfig,
+    "swiglu_bias":        SwiGLUBiasConfig,
+    # Combined with other ablation axes
+    "swiglu_parallel":    SwiGLUParallelConfig,
+    "swiglu_sandwich":    SwiGLUSandwichNormConfig,
+    "swiglu_mqa":         SwiGLUMQAConfig,
+    "swiglu_depth_init":  SwiGLUDepthScaledInitConfig,
+
+    # ── SciSpace-inspired Variations (20) ─────────────────────────────
+    "scispace_singlu":        ScispaceSinGLUConfig,
+    "scispace_tanhglu":       ScispaceTanhGLUConfig,
+    "scispace_sigmoidglu":    ScispaceSigmoidGLUConfig,
+    "scispace_softplusglu":   ScispaceSoftplusGLUConfig,
+    "scispace_eluglu":        ScispaceELUGLUConfig,
+    "scispace_celuglu":       ScispaceCELUGLUConfig,
+    "scispace_hardswishglu":  ScispaceHardswishGLUConfig,
+    "scispace_laplaceglu":    ScispaceLaplaceGLUConfig,
+    "scispace_sincosglu":     ScispaceSinCosGLUConfig,
+    "scispace_singleprojglu": ScispaceSingleProjGLUConfig,
+    "scispace_tripleprojglu": ScispaceTripleProjGLUConfig,
+    "scispace_pregatelu":     ScispacePreGateGLUConfig,
+    "scispace_postgatelu":    ScispacePostGateGLUConfig,
+    "scispace_topkglu":       ScispaceTopKGLUConfig,
+    "scispace_leakyglu":      ScispaceLeakyGLUConfig,
+    "scispace_asymglu":       ScispaceAsymGLUConfig,
+    "scispace_prenormdown":   ScispacePrenormDownConfig,
+    "scispace_scalegate":     ScispaceScaleGateConfig,
+    "scispace_composite":     ScispaceCompositeConfig,
+    "scispace_moelite":       ScispaceMoELiteConfig,
 }
 
 # Quick sanity check
-assert len(ABLATION_CONFIGS) >= 40, f"Expected 40+ configs, got {len(ABLATION_CONFIGS)}"
+assert len(ABLATION_CONFIGS) >= 72, f"Expected 72+ configs, got {len(ABLATION_CONFIGS)}"
 
 
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
