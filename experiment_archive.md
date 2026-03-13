@@ -43,5 +43,20 @@ This document serves as a comprehensive registry of all tried architectural vari
 | **high_muon_lr** | Muon LR = 0.048 (2x baseline). | Unstable | Fail |
 | **no_weight_decay** | 0.0 weight decay. | Early Overfitting | Fail |
 
+## 🧠 Attention Mechanism Experiments (Current Batch)
+*Phase: Debugging (5k tokens) and initial valuation (10M tokens).*
+*New Baseline: **SwiGLU Sandwich** (-2.92% over original).*
+
+| Experiment ID | Category | Description | Verdict |
+|:--------------|:---------|:------------|:--------|
+| **attn_qk_norm_only** | Normalization | Tests Q-only and K-only normalization variants. | TBD |
+| **attn_softcap_X** | Score Scoring | Gemma-style logit softcapping (range 10-55). | TBD |
+| **attn_window_X** | Sparsity | Local windowed attention (32-320 tokens). | TBD |
+| **attn_poly_X** | Kernel | Polynomial kernel scoring (order 2, 3). | TBD |
+| **attn_shared_qkv** | Structural | Shared projection weights for Q, K, and V. | TBD |
+| **attn_hilo_X** | Architecture | HiLo-style frequency splitting of heads. | TBD |
+| **attn_pool_kX** | Efficiency | Temporal KV pooling (factors 2, 4, 8). | TBD |
+| **attn_act_X** | Activation | ReLU, Squared ReLU, GELU attention scoring. | TBD |
+
 ---
 *Note: Comparisons are relative to the Squared ReLU Baseline at 10M tokens.*

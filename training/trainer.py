@@ -161,31 +161,41 @@ def train_model(
             batch_tokens = x.numel()
 
             # Forward pass (optimized to avoid large contiguous copies of logits)
+            label_smoothing = getattr(config, 'label_smoothing', 0.0)
+            z_loss_weight = getattr(config, 'z_loss_weight', 0.0)
+
             if config.use_amp:
                 with autocast('cuda', dtype=torch.bfloat16):
                     logits = model(x)
-                    # Shift labels instead of logits to save ~3GB VRAM
-                    # We set the last token to -100 so cross_entropy ignores it
                     shift_labels = torch.full_like(y, -100)
                     shift_labels[:, :-1] = y[:, 1:]
-                    
+
                     ce_loss = F.cross_entropy(
                         logits.view(-1, config.vocab_size),
                         shift_labels.view(-1),
-                        ignore_index=-100
+                        ignore_index=-100,
+                        label_smoothing=label_smoothing,
                     )
+                    # Z-loss: penalize large logits to stabilize training
+                    if z_loss_weight > 0.0:
+                        z_loss = z_loss_weight * torch.logsumexp(logits.view(-1, config.vocab_size), dim=-1).square().mean()
+                        ce_loss = ce_loss + z_loss
                     loss = ce_loss / config.gradient_accumulation_steps
                 loss.backward()
             else:
                 logits = model(x)
                 shift_labels = torch.full_like(y, -100)
                 shift_labels[:, :-1] = y[:, 1:]
-                
+
                 ce_loss = F.cross_entropy(
                     logits.view(-1, config.vocab_size),
                     shift_labels.view(-1),
-                    ignore_index=-100
+                    ignore_index=-100,
+                    label_smoothing=label_smoothing,
                 )
+                if z_loss_weight > 0.0:
+                    z_loss = z_loss_weight * torch.logsumexp(logits.view(-1, config.vocab_size), dim=-1).square().mean()
+                    ce_loss = ce_loss + z_loss
                 loss = ce_loss / config.gradient_accumulation_steps
                 loss.backward()
 

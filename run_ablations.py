@@ -21,11 +21,12 @@ Usage:
 
 import argparse
 import os
-import sys
-import json
 import time
+import json
 import math
+import random
 import gc
+import sys
 import torch
 import torch._dynamo
 import torch.nn.functional as F
@@ -166,20 +167,24 @@ def run_single_experiment(
     initial_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
     
     # 3. Compile (if requested)
+    compiled_model = None
     if use_compile and config.compile_model:
         print("🚀 Compiling model with torch.compile...")
-        orig_model = model
         try:
-            model = torch.compile(model)
+            compiled_model = torch.compile(model)
             print("✅ Model compiled successfully")
-            
-            warmup_compiled_kernels_ablation(model, config, train_loader, device, num_steps=3)
-            orig_model.load_state_dict(initial_model_state)
+
+            warmup_compiled_kernels_ablation(compiled_model, config, train_loader, device, num_steps=3)
+            model.load_state_dict(initial_model_state)
             print("🔄 Model weights reset to initial state")
+            # Use compiled model for training
+            training_model = compiled_model
         except Exception as e:
             print(f"⚠️ Compilation failed: {e}")
-            model = orig_model
             model.load_state_dict(initial_model_state)
+            training_model = model
+    else:
+        training_model = model
     
     del initial_model_state
     torch.cuda.empty_cache()
@@ -224,9 +229,9 @@ def run_single_experiment(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
-    
+
     results = train_model(
-        model=model,
+        model=training_model,
         config=config,
         train_loader=train_loader,
         val_loader=val_loader,
@@ -237,12 +242,19 @@ def run_single_experiment(
         extra_config={'experiment_name': experiment_name},
         log_every=getattr(config, 'log_every', 100),
     )
-    
-    # 8. Cleanup GPU memory immediately
+
+    # 8. Cleanup GPU memory immediately - CRITICAL: clear compiled model first!
+    if compiled_model is not None:
+        del compiled_model
+        torch._dynamo.reset()  # Clear dynamo cache
+        gc.collect()
+        torch.cuda.empty_cache()
+
     del model
+    del training_model
     del optimizers
     del schedulers
-    
+
     gc.collect()
     torch.cuda.empty_cache()
     
@@ -296,6 +308,12 @@ def run_single_experiment(
             'dropout':          getattr(config, 'dropout', 0.0),
             'schedule_type':    getattr(config, 'schedule_type', 'constant'),
             'warmup_ratio':     getattr(config, 'warmup_ratio', 0.0),
+            # gen2 flags
+            'label_smoothing':  getattr(config, 'label_smoothing', 0.0),
+            'z_loss_weight':    getattr(config, 'z_loss_weight', 0.0),
+            'stochastic_depth': getattr(config, 'stochastic_depth', 0.0),
+            'value_norm':       getattr(config, 'value_norm', False),
+            'layer_scale_init': getattr(config, 'layer_scale_init', None),
         },
         'final_metrics': final_eval,
         'setup_time_seconds': setup_time,
@@ -312,17 +330,7 @@ def run_single_experiment(
     with open(metrics_file, 'w') as f:
         json.dump(metrics_data, f, indent=2)
     print(f"   📊 Metrics saved to {metrics_file}")
-    
-    # Save model checkpoint
-    checkpoint_path = output_path / "model.pt"
-    torch.save({
-        'model_state_dict': results['model'].state_dict(),
-        'config': config,
-        'metrics': final_eval,
-        'step': results['steps'],
-    }, checkpoint_path)
-    print(f"   💾 Model saved to {checkpoint_path}")
-    
+
     # Print results
     print(f"\n{'─'*70}")
     print(f"  [{experiment_name}] RESULTS")
@@ -559,22 +567,45 @@ def main():
             )
             all_results.append(result)
         except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
             print(f"❌ [CRASH] Experiment {exp_name} failed: {e}")
-            print("Moving to next experiment...")
-            continue
-        
-        # Cleanup between experiments
-        del train_loader
-        del val_loader
-        del result
-        
+            print(tb)
+            # Save crash log for later debugging
+            crash_dir = Path(exp_output)
+            crash_dir.mkdir(parents=True, exist_ok=True)
+            crash_file = crash_dir / "CRASH.log"
+            with open(crash_file, 'w') as f:
+                f.write(f"experiment: {exp_name}\n")
+                f.write(f"tokens: {args.tokens}\n")
+                f.write(f"error: {e}\n\n")
+                f.write(tb)
+            print(f"   Crash log saved to {crash_file}")
+            print("   Continuing to next experiment...\n")
+            # result may not exist
+            result = None
+
+        # Cleanup between experiments — aggressive GPU memory clearing
+        try:
+            del train_loader
+        except:
+            pass
+        try:
+            del val_loader
+        except:
+            pass
+        try:
+            if result is not None:
+                del result
+        except:
+            pass
+
         # Clear compilation cache and GPU memory
-        if use_compile:
-            try:
-                torch._dynamo.reset()
-            except:
-                pass
-        
+        try:
+            torch._dynamo.reset()
+        except:
+            pass
+
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

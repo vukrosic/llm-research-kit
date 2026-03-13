@@ -48,6 +48,11 @@ class MinimalLLMAblation(nn.Module):
         else:
             self.pos_embedding = None
 
+        # ── New feature flags ─────────────────────────────────────────────
+        value_norm        = getattr(config, 'value_norm', False)
+        layer_scale_init  = getattr(config, 'layer_scale_init', None)
+        stochastic_depth  = getattr(config, 'stochastic_depth', 0.0)
+
         # ── Transformer Blocks ────────────────────────────────────────────
         block_kwargs = dict(
             d_model         = config.d_model,
@@ -63,18 +68,39 @@ class MinimalLLMAblation(nn.Module):
             ffn_type        = ffn_type,
             use_rope        = use_rope,
             use_bias        = use_bias,
+            qk_norm_type    = getattr(config, 'qk_norm_type', 'rmsnorm'),
+            use_q_norm      = getattr(config, 'use_q_norm', True),
+            use_k_norm      = getattr(config, 'use_k_norm', True),
+            attn_scale      = getattr(config, 'attn_scale', 1.0),
+            attn_window_size= getattr(config, 'attn_window_size', None),
+            attn_softcap    = getattr(config, 'attn_softcap', None),
+            attn_activation = getattr(config, 'attn_activation', 'softmax'),
+            use_shared_qkv  = getattr(config, 'use_shared_qkv', False),
+            hilo_fraction   = getattr(config, 'hilo_fraction', None),
+            kv_pool_factor  = getattr(config, 'kv_pool_factor', None),
+            poly_order      = getattr(config, 'poly_order', None),
+            value_norm      = value_norm,
+            layer_scale_init= layer_scale_init,
         )
 
+        n_layers = config.n_layers
         if parallel_block:
             self.transformer_blocks = nn.ModuleList([
-                ParallelTransformerBlock(**block_kwargs)
-                for _ in range(config.n_layers)
+                ParallelTransformerBlock(
+                    **block_kwargs,
+                    stochastic_depth_rate=stochastic_depth * (i / max(n_layers - 1, 1)),
+                )
+                for i in range(n_layers)
             ])
         else:
             self.transformer_blocks = nn.ModuleList([
-                TransformerBlockAblation(**block_kwargs, norm_position=norm_position,
-                                        residual_scale=residual_scale)
-                for _ in range(config.n_layers)
+                TransformerBlockAblation(
+                    **block_kwargs,
+                    norm_position=norm_position,
+                    residual_scale=residual_scale,
+                    stochastic_depth_rate=stochastic_depth * (i / max(n_layers - 1, 1)),
+                )
+                for i in range(n_layers)
             ])
 
         # ── Final norm ────────────────────────────────────────────────────

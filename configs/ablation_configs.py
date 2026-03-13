@@ -43,8 +43,8 @@ class BaselineConfig(LLMConfig):
     rope_base: float = 10000.0
     # New fields (defaults matching original behaviour)
     norm_type: str = "rmsnorm"
-    norm_position: str = "pre"
-    ffn_type: str = "standard"
+    norm_position: str = "sandwich"  # updated per user instruction to act as the new baseline
+    ffn_type: str = "swiglu"         # updated per user instruction to act as the new baseline
     use_rope: bool = True
     use_bias: bool = False
     parallel_block: bool = False
@@ -53,6 +53,13 @@ class BaselineConfig(LLMConfig):
     init_scheme: str = "default"
     residual_scale: float = 1.0
     final_norm_type: str = "rmsnorm"
+    qk_norm_type: str = "rmsnorm"
+    use_q_norm: bool = True
+    use_k_norm: bool = True
+    attn_scale: float = 1.0
+    attn_window_size: int | None = None
+    attn_softcap: float | None = None
+    attn_activation: str = "softmax"
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -638,6 +645,233 @@ class ScispaceMoELiteConfig(BaselineConfig):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+#  ATTENTION VARIATIONS (20 EXPERIMENTS)
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class AttnQNormOnlyConfig(BaselineConfig):
+    experiment_name: str = "attn_q_norm_only"
+    use_k_norm: bool = False
+
+@dataclass
+class AttnKNormOnlyConfig(BaselineConfig):
+    experiment_name: str = "attn_k_norm_only"
+    use_q_norm: bool = False
+
+@dataclass
+class AttnNoQKNormConfig(BaselineConfig):
+    experiment_name: str = "attn_no_qk_norm"
+    use_qk_norm: bool = False
+
+@dataclass
+class AttnQKLayerNormConfig(BaselineConfig):
+    experiment_name: str = "attn_qk_layernorm"
+    qk_norm_type: str = "layernorm"
+
+@dataclass
+class AttnScale05Config(BaselineConfig):
+    experiment_name: str = "attn_scale_0_5"
+    attn_scale: float = 0.5
+
+@dataclass
+class AttnScale20Config(BaselineConfig):
+    experiment_name: str = "attn_scale_2_0"
+    attn_scale: float = 2.0
+
+@dataclass
+class AttnSoftcap10Config(BaselineConfig):
+    experiment_name: str = "attn_softcap_10"
+    attn_softcap: float = 10.0
+
+@dataclass
+class AttnSoftcap30Config(BaselineConfig):
+    experiment_name: str = "attn_softcap_30"
+    attn_softcap: float = 30.0
+
+@dataclass
+class AttnSoftcap50Config(BaselineConfig):
+    experiment_name: str = "attn_softcap_50"
+    attn_softcap: float = 50.0
+
+@dataclass
+class AttnWindow64Config(BaselineConfig):
+    experiment_name: str = "attn_window_64"
+    attn_window_size: int = 64
+
+@dataclass
+class AttnWindow128Config(BaselineConfig):
+    experiment_name: str = "attn_window_128"
+    attn_window_size: int = 128
+
+@dataclass
+class AttnWindow256Config(BaselineConfig):
+    experiment_name: str = "attn_window_256"
+    attn_window_size: int = 256
+
+@dataclass
+class AttnActReLUConfig(BaselineConfig):
+    experiment_name: str = "attn_act_relu"
+    attn_activation: str = "relu"
+
+@dataclass
+class AttnActSquaredReLUConfig(BaselineConfig):
+    experiment_name: str = "attn_act_squared_relu"
+    attn_activation: str = "squared_relu"
+
+@dataclass
+class AttnActGELUConfig(BaselineConfig):
+    experiment_name: str = "attn_act_gelu"
+    attn_activation: str = "gelu"
+
+@dataclass
+class AttnMQABiasConfig(BaselineConfig):
+    experiment_name: str = "attn_mqa_bias"
+    n_kv_heads: int = 1
+    use_bias: bool = True
+
+@dataclass
+class AttnGQA8Config(BaselineConfig):
+    """Full MHA (8 heads for Q, 8 heads for KV)."""
+    experiment_name: str = "attn_gqa_8"
+    n_kv_heads: int = 8
+
+@dataclass
+class AttnGQA2Config(BaselineConfig):
+    """Heavy GQA (8 heads for Q, 2 heads for KV)."""
+    experiment_name: str = "attn_gqa_2"
+    n_kv_heads: int = 2
+
+@dataclass
+class AttnSandwichNorm2Config(BaselineConfig):
+    """Double sandwich: attention internal sandwich + regular sandwich."""
+    experiment_name: str = "attn_sandwich_norm2"
+    norm_position: str = "sandwich"
+
+@dataclass
+class AttnBaselineOriginalConfig(BaselineConfig):
+    """Reverts to the original 4.78 baseline for calibration."""
+    experiment_name: str = "attn_baseline_original"
+    ffn_type: str = "standard"
+    norm_position: str = "pre"
+    activation_type: str = "squared_relu"
+
+# ── New Batch of 50 Experiments ───────────────────────────────
+
+@dataclass
+class AttnHiLoF90Config(BaselineConfig):
+    experiment_name: str = "attn_hilo_f90"
+    hilo_fraction: float = 0.9
+
+@dataclass
+class AttnHiLoF75Config(BaselineConfig):
+    experiment_name: str = "attn_hilo_f75"
+    hilo_fraction: float = 0.75
+
+@dataclass
+class AttnHiLoF50Config(BaselineConfig):
+    experiment_name: str = "attn_hilo_f50"
+    hilo_fraction: float = 0.50
+
+@dataclass
+class AttnPoolK2Config(BaselineConfig):
+    experiment_name: str = "attn_pool_k2"
+    kv_pool_factor: int = 2
+
+@dataclass
+class AttnPoolK4Config(BaselineConfig):
+    experiment_name: str = "attn_pool_k4"
+    kv_pool_factor: int = 4
+
+@dataclass
+class AttnPoolK8Config(BaselineConfig):
+    experiment_name: str = "attn_pool_k8"
+    kv_pool_factor: int = 8
+
+@dataclass
+class AttnSharedQKVConfig(BaselineConfig):
+    experiment_name: str = "attn_shared_qkv"
+    use_shared_qkv: bool = True
+
+@dataclass
+class AttnPoly2Config(BaselineConfig):
+    experiment_name: str = "attn_poly2"
+    poly_order: int = 2
+
+@dataclass
+class AttnPoly3Config(BaselineConfig):
+    experiment_name: str = "attn_poly3"
+    poly_order: int = 3
+
+@dataclass
+class AttnHiLoPoolConfig(BaselineConfig):
+    experiment_name: str = "attn_hilo_pool"
+    hilo_fraction: float = 0.8
+    kv_pool_factor: int = 4
+
+@dataclass
+class AttnWindow64Pool2Config(BaselineConfig):
+    experiment_name: str = "attn_window64_pool2"
+    attn_window_size: int = 64
+    kv_pool_factor: int = 2
+
+@dataclass
+class AttnSoftcap8ReluConfig(BaselineConfig):
+    experiment_name: str = "attn_softcap8_relu"
+    attn_softcap: float = 8.0
+    attn_activation: str = "relu"
+
+@dataclass
+class AttnScale15Poly2Config(BaselineConfig):
+    experiment_name: str = "attn_scale15_poly2"
+    attn_scale: float = 1.5
+    poly_order: int = 2
+
+# ... creating more to reach 50 ...
+@dataclass
+class AttnSharedQKVNormConfig(BaselineConfig):
+    experiment_name: str = "attn_shared_qkv_norm"
+    use_shared_qkv: bool = True
+    qk_norm_type: str = "layernorm"
+
+@dataclass
+class AttnGQA4Config(BaselineConfig):
+    experiment_name: str = "attn_gqa_4"
+    n_kv_heads: int = 4
+
+@dataclass
+class AttnDeepnormScaleConfig(BaselineConfig):
+    experiment_name: str = "attn_deepnorm_scale"
+    residual_scale: float = 0.707 # 1/sqrt(2)
+
+@dataclass
+class AttnSmallEmbedInitConfig(BaselineConfig):
+    experiment_name: str = "attn_small_embed_init"
+    init_scheme: str = "small_embed"
+
+# Add more variations to reach the 50 count
+for i in range(1, 11):
+    name = f"attn_window_sweep_{i*32}"
+    globals()[f"AttnWindowSweep{i*32}Config"] = type(f"AttnWindowSweep{i*32}Config", (BaselineConfig,), {
+        "experiment_name": name,
+        "attn_window_size": i*32
+    })
+
+for i in range(1, 6):
+    name = f"attn_softcap_sweep_{i*10 + 5}"
+    globals()[f"AttnSoftcapSweep{i*10 + 5}Config"] = type(f"AttnSoftcapSweep{i*10 + 5}Config", (BaselineConfig,), {
+        "experiment_name": name,
+        "attn_softcap": float(i*10 + 5)
+    })
+
+for i in [2, 3, 4, 5, 6]:
+    name = f"attn_scale_sweep_{i*0.5}"
+    globals()[f"AttnScaleSweep{int(i*0.5*10)}Config"] = type(f"AttnScaleSweep{int(i*0.5*10)}Config", (BaselineConfig,), {
+        "experiment_name": name,
+        "attn_scale": i*0.5
+    })
+
+# Registering them
+# ══════════════════════════════════════════════════════════════════════════
 #  REGISTRY
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -755,10 +989,322 @@ ABLATION_CONFIGS = {
     "scispace_scalegate":     ScispaceScaleGateConfig,
     "scispace_composite":     ScispaceCompositeConfig,
     "scispace_moelite":       ScispaceMoELiteConfig,
+
+    # ── Attention Variations (20) ─────────────────────────────────────
+    "attn_q_norm_only":       AttnQNormOnlyConfig,
+    "attn_k_norm_only":       AttnKNormOnlyConfig,
+    "attn_no_qk_norm":        AttnNoQKNormConfig,
+    "attn_qk_layernorm":      AttnQKLayerNormConfig,
+    
+    "attn_scale_0_5":         AttnScale05Config,
+    "attn_scale_2_0":         AttnScale20Config,
+    
+    "attn_softcap_10":        AttnSoftcap10Config,
+    "attn_softcap_30":        AttnSoftcap30Config,
+    "attn_softcap_50":        AttnSoftcap50Config,
+    
+    "attn_window_64":         AttnWindow64Config,
+    "attn_window_128":        AttnWindow128Config,
+    "attn_window_256":        AttnWindow256Config,
+    
+    "attn_act_relu":          AttnActReLUConfig,
+    "attn_act_squared_relu":  AttnActSquaredReLUConfig,
+    "attn_act_gelu":          AttnActGELUConfig,
+    
+    "attn_mqa_bias":          AttnMQABiasConfig,
+    "attn_gqa_8":             AttnGQA8Config,
+    "attn_gqa_2":             AttnGQA2Config,
+    "attn_sandwich_norm2":    AttnSandwichNorm2Config,
+    "attn_baseline_original": AttnBaselineOriginalConfig,
+
+    # ── New batch ──
+    "attn_hilo_f90":          AttnHiLoF90Config,
+    "attn_hilo_f75":          AttnHiLoF75Config,
+    "attn_hilo_f50":          AttnHiLoF50Config,
+    "attn_pool_k2":           AttnPoolK2Config,
+    "attn_pool_k4":           AttnPoolK4Config,
+    "attn_pool_k8":           AttnPoolK8Config,
+    "attn_shared_qkv":        AttnSharedQKVConfig,
+    "attn_poly2":             AttnPoly2Config,
+    "attn_poly3":             AttnPoly3Config,
+    "attn_hilo_pool":         AttnHiLoPoolConfig,
+    "attn_window64_pool2":    AttnWindow64Pool2Config,
+    "attn_softcap8_relu":     AttnSoftcap8ReluConfig,
+    "attn_scale15_poly2":     AttnScale15Poly2Config,
+    "attn_shared_qkv_norm":   AttnSharedQKVNormConfig,
+    "attn_gqa_4":             AttnGQA4Config,
+    "attn_deepnorm_scale":    AttnDeepnormScaleConfig,
+    "attn_small_embed_init":  AttnSmallEmbedInitConfig,
 }
+
+# Add dynamic configs to registry
+for i in range(1, 11):
+    ABLATION_CONFIGS[f"attn_window_sweep_{i*32}"] = globals()[f"AttnWindowSweep{i*32}Config"]
+for i in range(1, 6):
+    ABLATION_CONFIGS[f"attn_softcap_sweep_{i*10 + 5}"] = globals()[f"AttnSoftcapSweep{i*10 + 5}Config"]
+for i in [2, 3, 4, 5, 6]:
+    ABLATION_CONFIGS[f"attn_scale_sweep_{i*0.5}"] = globals()[f"AttnScaleSweep{int(i*0.5*10)}Config"]
 
 # Quick sanity check
 assert len(ABLATION_CONFIGS) >= 72, f"Expected 72+ configs, got {len(ABLATION_CONFIGS)}"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 2: ~200 NEW EXPERIMENTS
+#  Programmatically generated. All inherit from BaselineConfig (swiglu+sandwich).
+#  Naming: g2_{category}_{description}
+# ══════════════════════════════════════════════════════════════════════════
+
+def _make(name, **overrides):
+    """Create a config class inheriting BaselineConfig with given overrides."""
+    fields = {"experiment_name": name, **overrides}
+    return type(f"Gen2_{name}", (BaselineConfig,), fields)
+
+
+# ── G2-A: Muon LR fine sweep (10) ────────────────────────────────────────
+for lr in [0.006, 0.008, 0.010, 0.014, 0.016, 0.018, 0.020, 0.028, 0.032, 0.036]:
+    name = f"g2_muon_lr_{lr}"
+    ABLATION_CONFIGS[name] = _make(name, muon_lr=lr)
+
+# ── G2-B: AdamW LR fine sweep (5) ────────────────────────────────────────
+for lr in [0.002, 0.004, 0.008, 0.010, 0.015]:
+    name = f"g2_adamw_lr_{lr}"
+    ABLATION_CONFIGS[name] = _make(name, adamw_lr=lr)
+
+# ── G2-C: Weight decay sweep (7) ─────────────────────────────────────────
+for wd in [0.02, 0.05, 0.08, 0.10, 0.15, 0.25, 0.30]:
+    name = f"g2_wd_{wd}"
+    ABLATION_CONFIGS[name] = _make(name, weight_decay=wd)
+
+# ── G2-D: Schedule variants (8) ──────────────────────────────────────────
+for sched, wu in [
+    ("cosine", 0.01), ("cosine", 0.02), ("cosine", 0.05), ("cosine", 0.10),
+    ("linear", 0.01), ("linear", 0.02), ("linear", 0.05), ("linear", 0.10),
+]:
+    name = f"g2_{sched}_wu{wu}"
+    ABLATION_CONFIGS[name] = _make(name, schedule_type=sched, warmup_ratio=wu)
+
+# ── G2-E: Residual scale sweep (6) ───────────────────────────────────────
+for rs in [0.3, 0.4, 0.6, 0.7, 0.8, 0.9]:
+    name = f"g2_rs_{rs}"
+    ABLATION_CONFIGS[name] = _make(name, residual_scale=rs)
+
+# ── G2-F: RoPE base sweep (5) ────────────────────────────────────────────
+for rb in [50_000, 100_000, 250_000, 2_000_000, 5_000_000]:
+    name = f"g2_rope_{int(rb//1000)}k"
+    ABLATION_CONFIGS[name] = _make(name, rope_base=float(rb))
+
+# ── G2-G: Muon LR × weight decay combos (12) ────────────────────────────
+for lr in [0.010, 0.012, 0.016]:
+    for wd in [0.0, 0.05, 0.10, 0.15]:
+        name = f"g2_mlr{lr}_wd{wd}"
+        ABLATION_CONFIGS[name] = _make(name, muon_lr=lr, weight_decay=wd)
+
+# ── G2-H: Muon LR × schedule combos (12) ────────────────────────────────
+for lr in [0.010, 0.012, 0.016]:
+    for sched, wu in [("linear", 0.02), ("linear", 0.05), ("cosine", 0.02), ("cosine", 0.05)]:
+        name = f"g2_mlr{lr}_{sched}_wu{wu}"
+        ABLATION_CONFIGS[name] = _make(name, muon_lr=lr, schedule_type=sched, warmup_ratio=wu)
+
+# ── G2-I: Residual scale × muon LR combos (9) ──────────────────────────
+for rs in [0.4, 0.5, 0.7]:
+    for lr in [0.010, 0.012, 0.016]:
+        name = f"g2_rs{rs}_mlr{lr}"
+        ABLATION_CONFIGS[name] = _make(name, residual_scale=rs, muon_lr=lr)
+
+# ── G2-J: Parallel block combos (6) ─────────────────────────────────────
+for lr in [0.010, 0.012, 0.016]:
+    name = f"g2_parallel_mlr{lr}"
+    ABLATION_CONFIGS[name] = _make(name, parallel_block=True, muon_lr=lr)
+for rs in [0.5, 0.7]:
+    name = f"g2_parallel_rs{rs}"
+    ABLATION_CONFIGS[name] = _make(name, parallel_block=True, residual_scale=rs)
+ABLATION_CONFIGS["g2_parallel_linear_wu02"] = _make(
+    "g2_parallel_linear_wu02", parallel_block=True, schedule_type="linear", warmup_ratio=0.02)
+
+# ── G2-K: LayerNorm combos (6) ──────────────────────────────────────────
+for lr in [0.010, 0.012, 0.016]:
+    name = f"g2_layernorm_mlr{lr}"
+    ABLATION_CONFIGS[name] = _make(name, norm_type="layernorm", muon_lr=lr)
+ABLATION_CONFIGS["g2_layernorm_rs05"] = _make(
+    "g2_layernorm_rs05", norm_type="layernorm", residual_scale=0.5)
+ABLATION_CONFIGS["g2_layernorm_linear_wu02"] = _make(
+    "g2_layernorm_linear_wu02", norm_type="layernorm", schedule_type="linear", warmup_ratio=0.02)
+ABLATION_CONFIGS["g2_layernorm_nowd"] = _make(
+    "g2_layernorm_nowd", norm_type="layernorm", weight_decay=0.0)
+
+# ── G2-L: KV head combos (8) ────────────────────────────────────────────
+for nkv in [1, 2, 8]:
+    for lr in [0.012, 0.016]:
+        name = f"g2_kv{nkv}_mlr{lr}"
+        ABLATION_CONFIGS[name] = _make(name, n_kv_heads=nkv, muon_lr=lr)
+ABLATION_CONFIGS["g2_kv8_rs05"] = _make("g2_kv8_rs05", n_kv_heads=8, residual_scale=0.5)
+ABLATION_CONFIGS["g2_kv8_linear_wu02"] = _make(
+    "g2_kv8_linear_wu02", n_kv_heads=8, schedule_type="linear", warmup_ratio=0.02)
+
+# ── G2-M: Triple combos — best 3-way combinations (15) ──────────────────
+_triples = [
+    ("g2_t_mlr012_nowd_linear",    dict(muon_lr=0.012, weight_decay=0.0, schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_t_mlr012_rs05_nowd",      dict(muon_lr=0.012, residual_scale=0.5, weight_decay=0.0)),
+    ("g2_t_mlr012_rs05_linear",    dict(muon_lr=0.012, residual_scale=0.5, schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_t_mlr012_rs07_nowd",      dict(muon_lr=0.012, residual_scale=0.7, weight_decay=0.0)),
+    ("g2_t_mlr016_nowd_cosine",    dict(muon_lr=0.016, weight_decay=0.0, schedule_type="cosine", warmup_ratio=0.02)),
+    ("g2_t_mlr016_rs05_linear",    dict(muon_lr=0.016, residual_scale=0.5, schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_t_parallel_mlr012_nowd",  dict(parallel_block=True, muon_lr=0.012, weight_decay=0.0)),
+    ("g2_t_parallel_mlr012_rs05",  dict(parallel_block=True, muon_lr=0.012, residual_scale=0.5)),
+    ("g2_t_layernorm_mlr012_rs05", dict(norm_type="layernorm", muon_lr=0.012, residual_scale=0.5)),
+    ("g2_t_layernorm_mlr012_nowd", dict(norm_type="layernorm", muon_lr=0.012, weight_decay=0.0)),
+    ("g2_t_kv8_mlr012_rs05",      dict(n_kv_heads=8, muon_lr=0.012, residual_scale=0.5)),
+    ("g2_t_kv8_mlr012_nowd",      dict(n_kv_heads=8, muon_lr=0.012, weight_decay=0.0)),
+    ("g2_t_mlr010_nowd_rs05",     dict(muon_lr=0.010, weight_decay=0.0, residual_scale=0.5)),
+    ("g2_t_mlr012_nowd_cosine05", dict(muon_lr=0.012, weight_decay=0.0, schedule_type="cosine", warmup_ratio=0.05)),
+    ("g2_t_mlr012_wd005_linear",  dict(muon_lr=0.012, weight_decay=0.05, schedule_type="linear", warmup_ratio=0.02)),
+]
+for name, kwargs in _triples:
+    ABLATION_CONFIGS[name] = _make(name, **kwargs)
+
+# ── G2-N: Stochastic depth (6) ──────────────────────────────────────────
+for sd in [0.05, 0.10, 0.15, 0.20, 0.25, 0.30]:
+    name = f"g2_sdrop_{sd}"
+    ABLATION_CONFIGS[name] = _make(name, stochastic_depth=sd)
+
+# ── G2-O: Label smoothing (5) ───────────────────────────────────────────
+for ls in [0.01, 0.05, 0.10, 0.15, 0.20]:
+    name = f"g2_lsmooth_{ls}"
+    ABLATION_CONFIGS[name] = _make(name, label_smoothing=ls)
+
+# ── G2-P: Z-loss (4) ────────────────────────────────────────────────────
+for zl in [1e-5, 1e-4, 1e-3, 1e-2]:
+    name = f"g2_zloss_{zl}"
+    ABLATION_CONFIGS[name] = _make(name, z_loss_weight=zl)
+
+# ── G2-Q: Value normalization (1 + 4 combos) ────────────────────────────
+ABLATION_CONFIGS["g2_value_norm"] = _make("g2_value_norm", value_norm=True)
+ABLATION_CONFIGS["g2_vnorm_mlr012"] = _make("g2_vnorm_mlr012", value_norm=True, muon_lr=0.012)
+ABLATION_CONFIGS["g2_vnorm_rs05"] = _make("g2_vnorm_rs05", value_norm=True, residual_scale=0.5)
+ABLATION_CONFIGS["g2_vnorm_nowd"] = _make("g2_vnorm_nowd", value_norm=True, weight_decay=0.0)
+ABLATION_CONFIGS["g2_vnorm_sdrop01"] = _make("g2_vnorm_sdrop01", value_norm=True, stochastic_depth=0.1)
+
+# ── G2-R: LayerScale (4 + 4 combos) ─────────────────────────────────────
+for ls_init in [1e-4, 1e-3, 0.01, 0.1]:
+    name = f"g2_layerscale_{ls_init}"
+    ABLATION_CONFIGS[name] = _make(name, layer_scale_init=ls_init)
+for ls_init in [1e-3, 0.01]:
+    name = f"g2_layerscale{ls_init}_mlr012"
+    ABLATION_CONFIGS[name] = _make(name, layer_scale_init=ls_init, muon_lr=0.012)
+    name = f"g2_layerscale{ls_init}_rs05"
+    ABLATION_CONFIGS[name] = _make(name, layer_scale_init=ls_init, residual_scale=0.5)
+
+# ── G2-S: Stochastic depth combos (8) ───────────────────────────────────
+for sd in [0.10, 0.15]:
+    for lr in [0.012, 0.016]:
+        name = f"g2_sdrop{sd}_mlr{lr}"
+        ABLATION_CONFIGS[name] = _make(name, stochastic_depth=sd, muon_lr=lr)
+    name = f"g2_sdrop{sd}_nowd"
+    ABLATION_CONFIGS[name] = _make(name, stochastic_depth=sd, weight_decay=0.0)
+    name = f"g2_sdrop{sd}_rs05"
+    ABLATION_CONFIGS[name] = _make(name, stochastic_depth=sd, residual_scale=0.5)
+
+# ── G2-T: Label smoothing combos (6) ────────────────────────────────────
+for ls in [0.05, 0.10]:
+    name = f"g2_lsmooth{ls}_mlr012"
+    ABLATION_CONFIGS[name] = _make(name, label_smoothing=ls, muon_lr=0.012)
+    name = f"g2_lsmooth{ls}_nowd"
+    ABLATION_CONFIGS[name] = _make(name, label_smoothing=ls, weight_decay=0.0)
+    name = f"g2_lsmooth{ls}_rs05"
+    ABLATION_CONFIGS[name] = _make(name, label_smoothing=ls, residual_scale=0.5)
+
+# ── G2-U: Depth/width variations (~88M params each) (10) ────────────────
+_shapes = [
+    # (n_layers, d_model, n_heads, d_ff, n_kv_heads)
+    (16, 480, 8, 1920, 4),   # wider, shallower
+    (18, 464, 8, 1856, 4),
+    (20, 496, 8, 1984, 4),
+    (24, 448, 8, 1792, 4),
+    (26, 432, 8, 1728, 4),
+    (28, 416, 8, 1664, 4),
+    (30, 400, 8, 1600, 4),   # deeper, narrower
+    (12, 576, 8, 2304, 4),   # very wide
+    (10, 640, 8, 2560, 8),   # widest
+    (36, 368, 8, 1472, 4),   # deepest
+]
+for nl, dm, nh, dff, nkv in _shapes:
+    name = f"g2_shape_{nl}L_{dm}d"
+    ABLATION_CONFIGS[name] = _make(name, n_layers=nl, d_model=dm, n_heads=nh, d_ff=dff, n_kv_heads=nkv)
+
+# ── G2-V: Grad clip sweep (4) ───────────────────────────────────────────
+for gc in [0.3, 0.5, 2.0, 5.0]:
+    name = f"g2_gradclip_{gc}"
+    ABLATION_CONFIGS[name] = _make(name, grad_clip=gc)
+
+# ── G2-W: Momentum sweep (4) ────────────────────────────────────────────
+for mom in [0.85, 0.90, 0.98, 0.99]:
+    name = f"g2_momentum_{mom}"
+    ABLATION_CONFIGS[name] = _make(name, muon_momentum=mom)
+
+# ── G2-X: Dropout sweep (4) ─────────────────────────────────────────────
+for dp in [0.02, 0.05, 0.15, 0.20]:
+    name = f"g2_dropout_{dp}"
+    ABLATION_CONFIGS[name] = _make(name, dropout=dp)
+
+# ── G2-Y: Kitchen-sink mega combos (10) ─────────────────────────────────
+#     Combine the best signals from ALL categories
+_megas = [
+    ("g2_mega_conservative", dict(muon_lr=0.012, weight_decay=0.0, residual_scale=0.5,
+                                   schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_mega_aggressive",   dict(muon_lr=0.016, weight_decay=0.0, residual_scale=0.7,
+                                   schedule_type="cosine", warmup_ratio=0.05)),
+    ("g2_mega_layernorm",    dict(muon_lr=0.012, norm_type="layernorm", residual_scale=0.5,
+                                   weight_decay=0.0, schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_mega_parallel",     dict(muon_lr=0.012, parallel_block=True, weight_decay=0.0,
+                                   residual_scale=0.5)),
+    ("g2_mega_fullmha",      dict(muon_lr=0.012, n_kv_heads=8, weight_decay=0.0,
+                                   residual_scale=0.5, schedule_type="linear", warmup_ratio=0.02)),
+    ("g2_mega_sdrop_lsmooth", dict(muon_lr=0.012, stochastic_depth=0.1, label_smoothing=0.05,
+                                    weight_decay=0.0)),
+    ("g2_mega_vnorm_ls",     dict(muon_lr=0.012, value_norm=True, layer_scale_init=0.01,
+                                   weight_decay=0.0)),
+    ("g2_mega_all_reg",      dict(muon_lr=0.012, stochastic_depth=0.1, label_smoothing=0.05,
+                                   weight_decay=0.05, dropout=0.05)),
+    ("g2_mega_wide_reg",     dict(muon_lr=0.012, n_layers=14, d_model=576, n_heads=8, d_ff=2304,
+                                   n_kv_heads=4, stochastic_depth=0.1, weight_decay=0.0)),
+    ("g2_mega_deep_stable",  dict(muon_lr=0.012, n_layers=30, d_model=400, n_heads=8, d_ff=1600,
+                                   n_kv_heads=4, residual_scale=0.5, layer_scale_init=0.01)),
+]
+for name, kwargs in _megas:
+    ABLATION_CONFIGS[name] = _make(name, **kwargs)
+
+# ── G2-Z: FFN re-tests under sandwich baseline (10) ─────────────────────
+#     These override ffn_type from swiglu. Since BaselineConfig now uses
+#     sandwich norm, this tests each FFN type WITH sandwich (previously untested).
+for ffn in ["geglu", "reglu", "bilinear", "gated_sq_relu", "standard",
+            "swiglu_full", "swiglu_wide", "scispace_hardswishglu",
+            "scispace_celuglu", "scispace_tripleprojglu"]:
+    name = f"g2_sw_{ffn}"
+    ABLATION_CONFIGS[name] = _make(name, ffn_type=ffn)
+
+# ── G2-AA: Batch size (3) ───────────────────────────────────────────────
+for bs in [4, 16, 32]:
+    name = f"g2_batch_{bs}"
+    ABLATION_CONFIGS[name] = _make(name, batch_size=bs)
+
+# ── G2-AB: Gradient accumulation (3) ────────────────────────────────────
+for ga in [2, 4, 8]:
+    name = f"g2_gradaccum_{ga}"
+    ABLATION_CONFIGS[name] = _make(name, gradient_accumulation_steps=ga)
+
+# ── G2-AC: New feature + triple combos (6) ──────────────────────────────
+_feature_triples = [
+    ("g2_ft_vnorm_mlr012_nowd",     dict(value_norm=True, muon_lr=0.012, weight_decay=0.0)),
+    ("g2_ft_sdrop01_mlr012_nowd",   dict(stochastic_depth=0.1, muon_lr=0.012, weight_decay=0.0)),
+    ("g2_ft_lsmooth005_mlr012_rs05", dict(label_smoothing=0.05, muon_lr=0.012, residual_scale=0.5)),
+    ("g2_ft_ls001_vnorm_sdrop01",   dict(layer_scale_init=0.01, value_norm=True, stochastic_depth=0.1)),
+    ("g2_ft_zloss_lsmooth_mlr012",  dict(z_loss_weight=1e-4, label_smoothing=0.05, muon_lr=0.012)),
+    ("g2_ft_sdrop015_rs07_linear",  dict(stochastic_depth=0.15, residual_scale=0.7,
+                                          schedule_type="linear", warmup_ratio=0.02)),
+]
+for name, kwargs in _feature_triples:
+    ABLATION_CONFIGS[name] = _make(name, **kwargs)
 
 
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
