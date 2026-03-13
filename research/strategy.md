@@ -4,47 +4,32 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
-## 2026-03-13 — System Setup + Current State Summary
+## 2026-03-13 — Baseline established, winner-based queue built
 
-### What we know so far
+### Current state
+- **Baseline**: `baseline` — val_loss **5.0611** at 6M tokens
+- **Best experiment**: `attn_qk_layernorm` — **5.0306** (+0.60%)
+- **Runner-up**: `attn_deepnorm_scale` (residual_scale=0.707) — **5.0309** (+0.60%)
+- **Marginals worth combining**: `bilinear_ffn` (+0.40%), `full_mha_swiglu` (+0.39%), `attn_bias` (+0.32%)
 
-**Confirmed wins (10M tokens, pre-norm baseline):**
-- `swiglu_sandwich` — +2.20% — **new g2 baseline**
-- `swiglu_layernorm` — +1.42%
-- `scispace_tripleprojglu` — +1.16%
-- `low_muon_lr` (0.018) — +1.15%
-- `parallel_swiglu` — +1.08%
-- `act_gelu` — +1.04%
-- `sandwich_norm` — +1.03%
-- `shallower_wider` — +1.00%
+### What we know
+- QK normalization with LayerNorm beats RMSNorm — small but consistent win
+- DeepNorm residual scaling (0.707) matches it — different mechanism, same magnitude
+- bilinear FFN is competitive with swiglu at this scale
+- 166 g2_* experiments are invalid (config dispatch bug) — ignore all g2_ results
 
-**Confirmed as load-bearing (regressions if removed):**
-- QK-norm (removing = −1.94%)
-- Embed scale (removing = −3.02%)
-- Final norm (removing = divergence)
-- Pre/sandwich norm position (post = divergence without warmup)
-- Weight tying (removing = −5.76%)
-- Muon momentum (removing = −2.55%)
+### Next batch (queue order)
+1. `deepnorm_residual_sweep_05` — does 0.5 beat 0.707?
+2. `deepnorm_residual_sweep_03` — does 0.3 beat 0.5?
+3. `combo_qklayernorm_deepnorm` — stack the two winners (orthogonal mechanisms)
+4. `combo_qklayernorm_bilinear` — stack attn winner + FFN marginal
+5. `bilinear_ffn_wide` — more capacity for bilinear
+6. `value_norm_qklayernorm` — normalize V vectors too (exploration)
+7. `layer_scale_deepnorm` — CaiT layer scale + deepnorm (exploration)
 
-**Confirmed failures (don't retry without specific new hypothesis):**
-- `glu_ffn`, `dropout_01`, `swiglu_swiglu`, `swiglu_deep`
-- All post-LN variants without warmup
-
-### Current batch (running)
-- ~57 attention mechanism experiments at 10M (softcap, windowed, pooling, GQA, QK variants)
-- ~200 g2_* hyperparameter sweeps at 6M — **UNRELIABLE due to config dispatch bug**
-
-### Next batch priorities
-1. **Fix config dispatch bug** in `configs/ablation_configs.py` — all 6M g2_* results invalid
-2. **Validate 6M top performers at 10M**: `attn_qk_layernorm`, `attn_deepnorm_scale`
-3. **Test optimizer on g2 baseline**: `muon_lr=0.018` on new baseline (currently only tested on old)
-4. **Combo experiment**: QK-LayerNorm + TripleProjGLU (stack two orthogonal winners)
-5. **Exploration**: `layer_scale_init=0.001` (CaiT paper, not yet tried)
-
-### Open questions
-- Does `shallower_wider` still win on g2 baseline?
-- Do any of the attention experiments (softcap, windowed) show wins at 10M?
-- Does `muon_lr=0.018` still help when g2 baseline already has better convergence?
-- Can post_norm work with proper warmup?
+### Decision rules
+- If `combo_qklayernorm_deepnorm` wins → it becomes new baseline, sweep residual around it
+- If residual sweep finds optimum below 0.707 → new baseline candidate for combos
+- If 3+ consecutive exploitations are neutral → add 2 exploration experiments from hypotheses.md
 
 ---
