@@ -162,3 +162,11 @@ After completing a batch of experiments:
    - What this batch tested
    - What was learned
    - What the next batch should focus on
+---
+
+## 11. Environment Setup
+
+To run Claude with dangerous permissions (required for some scripts) in this environment:
+```bash
+IS_SANDBOX=1 claude --dangerously-skip-permissions
+```
