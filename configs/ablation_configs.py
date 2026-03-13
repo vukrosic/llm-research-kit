@@ -1307,6 +1307,103 @@ for name, kwargs in _feature_triples:
     ABLATION_CONFIGS[name] = _make(name, **kwargs)
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 3: New baseline = attn_qk_layernorm (qk_norm_type=layernorm)
+#  All experiments inherit from QKLayerNormBaseConfig.
+#  Using proper @dataclass subclasses to avoid the _make() dispatch bug.
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class QKLayerNormBaseConfig(BaselineConfig):
+    """New baseline: BaselineConfig + qk_norm_type=layernorm (val_loss 5.0306)."""
+    experiment_name: str = "new_baseline_qklayernorm"
+    qk_norm_type: str = "layernorm"
+
+# ── Exploitation: marginals re-tested on new baseline ────────────────────
+
+@dataclass
+class NewDeepnorm07Config(QKLayerNormBaseConfig):
+    experiment_name: str = "new_deepnorm_07"
+    residual_scale: float = 0.707
+
+@dataclass
+class NewBilinearConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "new_bilinear"
+    ffn_type: str = "bilinear"
+
+@dataclass
+class NewFullMHAConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "new_full_mha"
+    n_kv_heads: int = 8
+
+@dataclass
+class NewAttnBiasConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "new_attn_bias"
+    use_bias: bool = True
+
+@dataclass
+class NewFFNWideConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "new_ffn_wide"
+    d_ff: int = 3072
+
+@dataclass
+class NewSmallEmbedInitConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "new_small_embed_init"
+    init_scheme: str = "small_embed"
+
+# ── Exploitation: deepnorm sweep ─────────────────────────────────────────
+
+@dataclass
+class DeepnormSweep05Config(QKLayerNormBaseConfig):
+    experiment_name: str = "deepnorm_sweep_05"
+    residual_scale: float = 0.5
+
+@dataclass
+class DeepnormSweep03Config(QKLayerNormBaseConfig):
+    experiment_name: str = "deepnorm_sweep_03"
+    residual_scale: float = 0.3
+
+# ── Combos ────────────────────────────────────────────────────────────────
+
+@dataclass
+class ComboDeepnormBilinearConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "combo_deepnorm_bilinear"
+    residual_scale: float = 0.707
+    ffn_type: str = "bilinear"
+
+@dataclass
+class ComboDeepnormFullMHAConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "combo_deepnorm_full_mha"
+    residual_scale: float = 0.707
+    n_kv_heads: int = 8
+
+# ── Exploration ───────────────────────────────────────────────────────────
+
+@dataclass
+class ValueNormConfig(QKLayerNormBaseConfig):
+    experiment_name: str = "value_norm"
+    value_norm: bool = True
+
+@dataclass
+class LayerScale001Config(QKLayerNormBaseConfig):
+    experiment_name: str = "layer_scale_001"
+    layer_scale_init: float = 0.001
+
+# Register all generation 3 configs
+ABLATION_CONFIGS["new_deepnorm_07"]          = NewDeepnorm07Config
+ABLATION_CONFIGS["new_bilinear"]             = NewBilinearConfig
+ABLATION_CONFIGS["new_full_mha"]             = NewFullMHAConfig
+ABLATION_CONFIGS["new_attn_bias"]            = NewAttnBiasConfig
+ABLATION_CONFIGS["new_ffn_wide"]             = NewFFNWideConfig
+ABLATION_CONFIGS["new_small_embed_init"]     = NewSmallEmbedInitConfig
+ABLATION_CONFIGS["deepnorm_sweep_05"]        = DeepnormSweep05Config
+ABLATION_CONFIGS["deepnorm_sweep_03"]        = DeepnormSweep03Config
+ABLATION_CONFIGS["combo_deepnorm_bilinear"]  = ComboDeepnormBilinearConfig
+ABLATION_CONFIGS["combo_deepnorm_full_mha"]  = ComboDeepnormFullMHAConfig
+ABLATION_CONFIGS["value_norm"]               = ValueNormConfig
+ABLATION_CONFIGS["layer_scale_001"]          = LayerScale001Config
+
+
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
     if name not in ABLATION_CONFIGS:
         raise ValueError(
