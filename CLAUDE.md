@@ -51,7 +51,7 @@ run_ablations.py             ← training runner
 Refine around known winners. If an experiment scored > +0.5% improvement:
 - Try ±1 step variations of its key hyperparameter
 - Try combining it with the second-best winner
-- Try it at higher token count to confirm it scales
+- Try combining two winning experiments to see if they stack
 
 ### Exploration (30%)
 Completely new mechanisms not yet tried. Source from:
@@ -84,10 +84,10 @@ e.g.: attn_rope_scaled, ffn_bilinear_wide, opt_muon_lr_0.018, norm_rms_gate
   "exp_id": "attn_rope_scaled",
   "hypothesis": "Scaled RoPE base improves long-range generalization",
   "source": "exploitation",
-  "parent_exp": "swiglu_sandwich",
+  "parent_exp": "attn_qk_layernorm",
   "expected_delta": "+0.3% to +0.8%",
   "priority": 2,
-  "token_budget": 10000000,
+  "token_budget": 6000000,
   "flags_override": {"rope_base": 500000},
   "status": "pending",
   "added_by": "claude",
@@ -101,7 +101,7 @@ e.g.: attn_rope_scaled, ffn_bilinear_wide, opt_muon_lr_0.018, norm_rms_gate
 ### Minimum viable experiment
 Each experiment must change **exactly one or two** things from the current best config. If you're testing more than two changes at once, split it into separate experiments (this is ablation research, not kitchen-sink).
 
-### Do not re-run failed experiments unless the base architecture has changed significantly or the token budget is 3x higher.
+### Do not re-run failed experiments unless the base architecture has changed significantly.
 
 ---
 
@@ -121,9 +121,8 @@ When files exist in `research/inbox/`:
 ## 7. Leaderboard Maintenance
 
 After every batch of experiments, update `experiments/leaderboard.md`:
-- Top 20 experiments by val_loss at the highest token count tested
-- Separate tables for: 10M tokens, 6M tokens (with caveat about config bug — see below)
-- Include: rank, exp_id, val_loss, delta vs baseline, pct improvement, token count, key change
+- **Only 1 entry**: the current best experiment (new winner replaces old)
+- Include: exp_id, val_loss, delta vs baseline, pct improvement, key change
 
 **Always note the active baseline** at the top of the leaderboard. If a new winner is found, it becomes the new baseline for subsequent experiments.
 
@@ -131,15 +130,11 @@ After every batch of experiments, update `experiments/leaderboard.md`:
 
 ## 8. Known Issues
 
-### 6M token config dispatch bug
-The `_make()` function in `configs/ablation_configs.py` creates non-dataclass subclasses of `BaselineConfig`. Because `BaselineConfig` is a `@dataclass`, its `__init__` always sets fields to the parent defaults — child class-level attribute overrides are ignored at instantiation. This means **all g2_* experiments in `ablation_results/6000000tok/` ran with identical configs** (the g2 baseline). Their val_loss differences (~±0.005) are noise, not real.
-
-**Do not draw conclusions from 6M g2_* results until the config bug is fixed.**
-
-Fix required in `configs/ablation_configs.py`: either use `@dataclass` decorator on child classes, or pass overrides as `__init__` arguments rather than class attributes.
+### g2_* config dispatch bug
+All `g2_*` experiments in `ablation_results/6000000tok/` ran with identical configs due to a `_make()` function bug. Their results are noise — marked `config_bug=true` in `history.json`, excluded from all analysis.
 
 ### attn_pool_k4 and attn_pool_k8 anomalies
-These show abnormally low val_loss (~2.49, ~3.57). This is an artifact: K-pooling reduces effective sequence length, making perplexity appear artificially low. These results are invalid and excluded from comparisons.
+Invalid — K-pooling reduces effective sequence length making perplexity appear artificially low. Excluded.
 
 ---
 
