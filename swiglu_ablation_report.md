@@ -14,8 +14,7 @@ Thank you SciSpace for a lot of great ideas (HardSwish, CELU, triple-dense-layer
 *(Ranked by Validation Loss against a Squared ReLU Baseline)*
 
 | Rank | Experiment | Val Loss | Delta % | Mathematical / Architectural Description |
-|:-----|:-----------|:---------|:--------|:-------------|
-| | **🟢 IDEAS TO TRY (Beat Baseline)** | | | |
+|:-----|:-----------|:-----------|:----------|:---------------|
 | 1 | **swiglu_sandwich** | 4.6682 | -2.20% | Applies an RMSNorm layer immediately after the element-wise multiplication of the gate and value branches, before the output projection. |
 | 2 | **scispace_tripleprojglu** | 4.7180 | -1.16% | Computes the element-wise product of three independent linear projections (rather than the standard two) prior to the final output projection. |
 | 3 | **swiglu_full** | 4.7226 | -1.06% | Increases the intermediate hidden dimension of the SwiGLU block to match standard wider FFN expansion ratios. |
@@ -64,3 +63,25 @@ Thank you SciSpace for a lot of great ideas (HardSwish, CELU, triple-dense-layer
 - **Triple Projections**: Formulating the block with three independent linear projections combined via element-wise multiplication (`scispace_tripleprojglu`, -1.16%), rather than the standard two (gate and value), improves performance by increasing the representation capacity of the gating interaction.
 - **Adjusting FFN Width**: Expanding the intermediate hidden dimensionality (`swiglu_full`, `swiglu_wide`) decreases validation loss by ~0.7% to ~1.06%. This directly trades increased parameter count for representation capacity.
 - **Alternative Gating Activations**: Replacing the standard SiLU activation in the gating mechanism with alternatives such as HardSwish (`scispace_hardswishglu`, -1.00%) or Continuously Differentiable ELU (`scispace_celuglu`, -0.89%) can lower validation loss without increasing parameter count.
+
+---
+
+### 🤖 AI Implementation Prompt
+
+*Copy and paste the prompt below into your favorite AI coding assistant (like ChatGPT, Claude, or Cursor) to easily implement the top performing variants in your own codebase:*
+
+```text
+Please act as an expert deep learning engineer. I would like you to upgrade my LLM's Feed-Forward Network (FFN) with the top-performing architectural variants from a recent SwiGLU ablation study to improve training validation loss.
+
+Here are the descriptions of the implementations to add to my codebase:
+
+1. **Sandwich Norm SwiGLU (`swiglu_sandwich`)**: Introduce an additional RMSNorm layer inside the SwiGLU block—specifically placed immediately after the element-wise multiplication of the gate and value branches, but before the final output projection.
+2. **Triple Projections (`scispace_tripleprojglu`)**: Compute the element-wise product of three independent linear projections (rather than the standard two) prior to the final output projection.
+3. **Wider SwiGLU (`swiglu_full`, `swiglu_wide`)**: Update the intermediate hidden dimension expansion factors of the SwiGLU block to increase representation capacity by matching wider FFN expansion ratios.
+4. **Alternative Activations (`scispace_hardswishglu`, `scispace_celuglu`)**: Swap out the standard SiLU gating activation with HardSwish or CELU (Continuously Differentiable Exponential Linear Unit).
+
+Here is my current existing FFN / transformer code:
+[PASTE YOUR CURRENT FFN CODE HERE]
+
+Please analyze my architecture, then provide the updated PyTorch `nn.Module` code for these top implementations. You can implement them as separate distinct modules or integrate them into a dynamic, highly extensible FFN class using configuration flags.
+```
