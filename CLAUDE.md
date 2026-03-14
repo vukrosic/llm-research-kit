@@ -19,14 +19,14 @@ research/
   processed/                 ← AI moves files here after extracting hypotheses
   hypotheses.md              ← AI-maintained distilled idea list
 experiments/
-  history.json               ← ALL experiments ever run (source of truth)
   queue.json                 ← pending experiments (AI reads/writes this)
   leaderboard.md             ← top performers (AI keeps updated)
 ablation_results/
-  6000000tok/                ← raw 6M token results
+  6000000tok/                ← raw 6M token results (each subdir has metrics.json)
 configs/
-  ablation_configs.py        ← where experiment configs live
-run_ablations.py             ← training runner
+  ablation_configs.py        ← where named experiment configs live
+run_ablations.py             ← training runner (uses named configs from ablation_configs.py)
+experiments/run_queue.py     ← training runner (uses queue.json flags_override)
 ```
 
 ---
@@ -35,11 +35,18 @@ run_ablations.py             ← training runner
 
 **Always do these steps in order:**
 
-1. **Read `experiments/history.json`** — search for similar configs. If an experiment with identical or nearly-identical flags already exists, do NOT re-run it. Instead, look for a neighboring variation that hasn't been tried.
+1. **Check existing results** — list `ablation_results/6000000tok/` directories and read `experiments/queue.json` (done entries) to find similar configs. If an experiment with identical or nearly-identical flags already exists, do NOT re-run it. Instead, look for a neighboring variation that hasn't been tried.
 
 2. **Read `research/inbox/`** — process any unread papers/ideas (see Section 6).
 
 3. **Read `experiments/queue.json`** — check what's already queued. Do not duplicate queued experiments.
+
+### Two experiment runners
+Experiments can be run two ways — results from both are equally valid:
+- **`run_ablations.py`** — uses named config classes from `configs/ablation_configs.py`. Result dirs typically have generation prefixes (e.g. `g9_muon_row_norm`).
+- **`experiments/run_queue.py`** — builds configs from `BaselineConfig` + `flags_override` in `queue.json`. Result dirs use the `exp_id` from the queue entry, which may or may not have a generation prefix.
+
+When checking for existing results, **always check both** the named configs in `ablation_configs.py` AND done entries in `queue.json`. Result directories in `ablation_results/6000000tok/` may come from either runner.
 
 ---
 
@@ -154,6 +161,12 @@ Each experiment must change **exactly one or two** things from the current best 
 - z_loss_weight=1e-4, 1e-3 — tried
 - use_embed_scale=False — tried
 
+**Muon variants (exhausted as standalone):**
+- muon_cautious — catastrophic loser (-2.6% to -3.2% across all variants)
+- muon_ema_ortho — big loser (-5% to -6%)
+- muon_update_clip — catastrophic loser (-12% to -13%)
+- muon_frob_scale — catastrophic loser (-19%)
+
 **Structural (exhausted):**
 - tie_weights=False — catastrophic loser
 - use_bias toggle — tried (use_bias=True is now the baseline)
@@ -206,10 +219,13 @@ After every batch of experiments, update `experiments/leaderboard.md`:
 ## 8. Known Issues
 
 ### g2_* config dispatch bug
-All `g2_*` experiments in `ablation_results/6000000tok/` ran with identical configs due to a `_make()` function bug. Their results are noise — marked `config_bug=true` in `history.json`, excluded from all analysis.
+All `g2_*` experiments in `ablation_results/6000000tok/` ran with identical configs due to a `_make()` function bug. Their results are noise — excluded from all analysis.
 
 ### attn_pool_k4 and attn_pool_k8 anomalies
 Invalid — K-pooling reduces effective sequence length making perplexity appear artificially low. Excluded.
+
+### CRASH.log with "Permission denied"
+Many experiments have a `CRASH.log` file containing `[Errno 13] Permission denied`. This is a **post-training file save error**, not a training failure. Check `metrics.json` — if `tokens_seen` equals the target (e.g. 6012928 for 6M token runs) and `final_metrics` contains valid val_loss, the results are valid. Do not discard or re-run these experiments.
 
 ---
 
@@ -218,7 +234,7 @@ Invalid — K-pooling reduces effective sequence length making perplexity appear
 When running multiple experiments:
 - Use `CUDA_VISIBLE_DEVICES={gpu_id}` to assign one GPU per experiment
 - Update `status` in `queue.json` to `running` before launching
-- Update to `done` and append to `history.json` after completion
+- Update to `done` after completion
 - Never assign the same GPU to two experiments simultaneously
 
 ### GPU consistency rule
@@ -237,20 +253,8 @@ When multiple people with different GPUs contribute to the same leaderboard:
 2. Run the current baseline experiment (active baseline exp_id from leaderboard.md) on their GPU → record `local_baseline_loss`
 3. Run as many experiments as they want freely — no need to claim or announce anything
 4. Pick their single best result and submit a PR with:
-   - Their experiment config (added to `configs/ablation_configs.py`)
-   - A `history.json` entry including `val_loss`, `local_baseline_loss`, `delta`, and `gpu`
-
-**PR / history.json entry format:**
-```json
-{
-  "exp_id": "...",
-  "val_loss": <raw on contributor GPU>,
-  "local_baseline_loss": <baseline re-run on contributor GPU>,
-  "delta": <local_baseline_loss - val_loss>,
-  "gpu": "RTX 3090",
-  "contributor": "alice"
-}
-```
+   - Their experiment config (added to `configs/ablation_configs.py` or as a `queue.json` entry)
+   - Include `val_loss`, `local_baseline_loss`, `delta`, `gpu`, and `contributor` in the PR description
 
 **Promotion rule — owner verifies before leaderboard update:**
 The contributor's best result is only added to the leaderboard after the **reference GPU owner** re-runs that exact experiment config on the reference hardware. The owner's run is the authoritative val_loss. If it beats the current baseline, it becomes the new baseline. Duplicate experiments across contributors are fine — cheap to run and provide useful variance data.
@@ -261,8 +265,7 @@ The contributor's best result is only added to the leaderboard after the **refer
 
 After completing a batch of experiments:
 1. Update `experiments/leaderboard.md`
-2. Append results to `experiments/history.json`
-3. Write a brief strategy note to `research/strategy.md`:
+2. Write a brief strategy note to `research/strategy.md`:
    - What this batch tested
    - What was learned
    - What the next batch should focus on
