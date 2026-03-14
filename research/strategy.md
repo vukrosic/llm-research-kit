@@ -4,6 +4,41 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-14 — Gen9 results: new baseline g9_gated_residual, Gen10 launched
+
+### Gen9 Winners (vs g7_use_bias baseline 4.8948)
+| exp_id | val_loss | Δ | key change |
+|--------|----------|---|------------|
+| g9_gated_residual | 4.8844 | +0.0104 | Learned sigmoid gates on residual connections |
+| g9_residual_035 | 4.8853 | +0.0095 | residual_scale=0.35 (tighter than 0.5) |
+| g9_bilinear_elu_gated_res | 4.8862 | +0.0086 | bilinear_elu FFN + gated residual |
+| g9_bilinear_elu_rs04 | 4.8869 | +0.0079 | bilinear_elu + residual_scale=0.4 |
+
+### Key findings
+- **Gated residual is the clear winner.** Learned sigmoid gates (per-block scalar, init=sigmoid(0)=0.5) that adapt the residual strength per layer beat all other Gen9 mechanisms.
+- **residual_scale=0.35** beats 0.4 and 0.5 — worth sweeping further (try 0.25, 0.30).
+- **bilinear_elu FFN** consistently appears in Gen9 winners — the ELU gate activation outperforms the pure bilinear gate. Will test in Gen10 combined with gated residual.
+- **Frob scale** (-18%), **q_rope_only** (-14%), **cosine_attn** (crashed — alibi OOM issue), **bilinear_softplus/gauss/cubic/sq_silu** — all losers or neutral.
+- Muon variants (grad_center, double_ortho, ema_ortho): grad_center slightly negative, double_ortho slightly negative, ema_ortho big loser. Re-running 27 crashed Muon experiments now.
+
+### New baseline: g9_gated_residual (4.8844)
+All Gen10 experiments built on top of this config.
+
+### Gen10 strategy (50 experiments — currently running)
+- **A (5):** Residual scale sweeps with gated residual: 0.25, 0.35, 0.40, 0.60, 1.0
+- **B (4):** Gate init variants: high(2.0), low(-2.0), open(4.0), per_channel
+- **C (10):** Gated residual + Muon variants (post_mom, grad_center, cautious, double_ortho, adaptive_ns, warm_mom, rms_norm, row_norm, sign_mix, half_ortho)
+- **D (8):** Gated residual + attention/FFN combos (cosine_attn, alibi, qkln, bilinear_elu variants)
+- **E+F+G (23):** Novel combos: gated+per_channel+rs035, gated+cosine+qkln, update_clip, trust_region, bilinear_mish, bilinear_sq_silu
+
+### What to watch in Gen10
+- If rs035 + gated_residual wins → try 0.30, 0.25
+- If gate_per_channel wins → it becomes the default residual mechanism
+- If bilinear_elu + gated wins → three-way combo (elu + gated + rs035)
+- Any Muon variant that stacks with gated_residual is particularly interesting
+
+---
+
 ## 2026-03-14 — New baseline: combo_deepnorm_bilinear (4.9869), Gen4 queue built
 
 ### Baseline update

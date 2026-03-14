@@ -52,6 +52,13 @@ class MinimalLLMAblation(nn.Module):
         value_norm        = getattr(config, 'value_norm', False)
         layer_scale_init  = getattr(config, 'layer_scale_init', None)
         stochastic_depth  = getattr(config, 'stochastic_depth', 0.0)
+        # Gen9/10 novel mechanisms
+        cosine_attn       = getattr(config, 'cosine_attn', False)
+        q_rope_only       = getattr(config, 'q_rope_only', False)
+        alibi             = getattr(config, 'alibi', False)
+        gated_residual    = getattr(config, 'gated_residual', False)
+        gate_init         = getattr(config, 'gate_init', 0.0)
+        gate_per_channel  = getattr(config, 'gate_per_channel', False)
 
         # ── Transformer Blocks ────────────────────────────────────────────
         block_kwargs = dict(
@@ -81,6 +88,12 @@ class MinimalLLMAblation(nn.Module):
             poly_order      = getattr(config, 'poly_order', None),
             value_norm      = value_norm,
             layer_scale_init= layer_scale_init,
+            cosine_attn       = cosine_attn,
+            q_rope_only       = q_rope_only,
+            alibi             = alibi,
+            gated_residual    = gated_residual,
+            gate_init         = gate_init,
+            gate_per_channel  = gate_per_channel,
         )
 
         n_layers = config.n_layers

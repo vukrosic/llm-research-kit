@@ -625,6 +625,58 @@ class SciSwiGLUMoELiteFFN(nn.Module):
         return weights[..., 0:1] * e1 + weights[..., 1:2] * e2
 
 
+# ──────────────────────────────────────────────
+# Gen9: Novel Bilinear-Gate FFN variants
+# Current bilinear = gate(x) * up(x) (no activation on gate — pure bilinear).
+# These variants apply different activations to the gate path. Never tried before.
+# ──────────────────────────────────────────────
+
+class BilinearGatedFFN(nn.Module):
+    """Bilinear FFN with configurable gate activation.
+    Base bilinear is: gate_proj(x) * up_proj(x) — no activation.
+    This class applies a nonlinearity to the gate path: act(gate_proj(x)) * up_proj(x).
+    10 novel gate activations tested in Gen9: elu, softplus, cos, abs, sqr, cubic,
+    gaussian, star (StarReLU-like), mish, sq_silu.
+    """
+    def __init__(self, d_model: int, d_ff: int, dropout: float = 0.0,
+                 use_bias: bool = False, gate_type: str = 'elu'):
+        super().__init__()
+        hidden = int(d_ff * 2 / 3)
+        self.gate_proj = nn.Linear(d_model, hidden, bias=use_bias)
+        self.up_proj   = nn.Linear(d_model, hidden, bias=use_bias)
+        self.down_proj = nn.Linear(hidden, d_model, bias=use_bias)
+        self.dropout   = nn.Dropout(dropout)
+        self.gate_type = gate_type
+
+    def forward(self, x):
+        g = self.gate_proj(x)
+        u = self.up_proj(x)
+        t = self.gate_type
+        if t == 'elu':
+            gate = F.elu(g)
+        elif t == 'softplus':
+            gate = F.softplus(g)
+        elif t == 'cos':
+            gate = torch.cos(g)
+        elif t == 'abs':
+            gate = g.abs()
+        elif t == 'sqr':
+            gate = g.square()
+        elif t == 'cubic':
+            gate = g.pow(3)
+        elif t == 'gaussian':
+            gate = torch.exp(-g.square().clamp(max=20))
+        elif t == 'star':
+            gate = g * torch.sigmoid(g)  # StarReLU: x*σ(x)
+        elif t == 'mish':
+            gate = g * torch.tanh(F.softplus(g))  # Mish: x*tanh(softplus(x))
+        elif t == 'sq_silu':
+            gate = F.silu(g).square()  # Squared SiLU
+        else:
+            raise ValueError(f"Unknown gate_type: {t}")
+        return self.down_proj(self.dropout(gate * u))
+
+
 def build_ffn(ffn_type: str, d_model: int, d_ff: int, dropout: float,
               activation_type: str = "squared_relu", use_bias: bool = False) -> nn.Module:
     """Factory for FFN modules."""
@@ -672,6 +724,17 @@ def build_ffn(ffn_type: str, d_model: int, d_ff: int, dropout: float,
     elif ffn_type == "scispace_scalegate":    return SciSwiGLUScaleGateFFN(d_model, d_ff, dropout, use_bias)
     elif ffn_type == "scispace_composite":    return SciCompositeGLUFFN(d_model, d_ff, dropout, use_bias)
     elif ffn_type == "scispace_moelite":      return SciSwiGLUMoELiteFFN(d_model, d_ff, dropout, use_bias)
+    # ── Gen9: Novel bilinear gate activations (never tried before) ─────────
+    elif ffn_type == "bilinear_elu":       return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='elu')
+    elif ffn_type == "bilinear_softplus":  return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='softplus')
+    elif ffn_type == "bilinear_cos":       return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='cos')
+    elif ffn_type == "bilinear_abs":       return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='abs')
+    elif ffn_type == "bilinear_sqr":       return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='sqr')
+    elif ffn_type == "bilinear_cubic":     return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='cubic')
+    elif ffn_type == "bilinear_gaussian":  return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='gaussian')
+    elif ffn_type == "bilinear_star":      return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='star')
+    elif ffn_type == "bilinear_mish":      return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='mish')
+    elif ffn_type == "bilinear_sq_silu":   return BilinearGatedFFN(d_model, d_ff, dropout, use_bias, gate_type='sq_silu')
     else:
         raise ValueError(f"Unknown ffn_type: {ffn_type}")
 
@@ -726,6 +789,10 @@ class MultiHeadAttentionAblation(nn.Module):
         kv_pool_factor: int | None = None,
         poly_order: int | None = None,
         value_norm: bool = False,
+        # Gen9 novel attention mechanisms
+        cosine_attn: bool = False,     # L2-normalize Q and K (cosine similarity attention)
+        q_rope_only: bool = False,     # apply RoPE to Q only, not K (asymmetric positional)
+        alibi: bool = False,           # ALiBi: linear position biases on logits, replaces RoPE
     ):
         super().__init__()
         self.d_model = d_model
@@ -747,6 +814,14 @@ class MultiHeadAttentionAblation(nn.Module):
         self.kv_pool_factor = kv_pool_factor
         self.poly_order = poly_order
         self.value_norm = value_norm
+        self.cosine_attn = cosine_attn
+        self.q_rope_only = q_rope_only
+        self.alibi = alibi
+        if alibi:
+            # Precompute ALiBi slopes: m_h = 2^(-8h/n_heads) for h=1..n_heads
+            n = self.n_heads
+            slopes = torch.pow(2, -(8.0 / n) * torch.arange(1, n + 1, dtype=torch.float32))
+            self.register_buffer('alibi_slopes', slopes)
 
         if self.value_norm:
             self.v_norm = nn.RMSNorm(self.d_k)
@@ -821,9 +896,15 @@ class MultiHeadAttentionAblation(nn.Module):
             if self.use_q_norm: Q = self.q_norm(Q)
             if self.use_k_norm: K = self.k_norm(K)
 
+        # === cosine_attn: L2-normalize Q and K for cosine similarity attention ===
+        if self.cosine_attn:
+            Q = F.normalize(Q, dim=-1)
+            K = F.normalize(K, dim=-1)
+
         if self.use_rope:
             Q = self.rotary(Q)
-            K = self.rotary(K)
+            if not self.q_rope_only:
+                K = self.rotary(K)
 
         if self.n_kv_heads != self.n_heads:
             K = torch.repeat_interleave(K, self.num_key_value_groups, dim=2)
@@ -844,7 +925,9 @@ class MultiHeadAttentionAblation(nn.Module):
             self.attn_scale != 1.0 or
             self.poly_order is not None or
             self.kv_pool_factor is not None or
-            self.hilo_fraction is not None
+            self.hilo_fraction is not None or
+            self.alibi or
+            self.cosine_attn
         )
 
         if not needs_manual:
@@ -892,8 +975,21 @@ class MultiHeadAttentionAblation(nn.Module):
                 
                 attn_output = torch.cat([hi_out, lo_out], dim=1)
             else:
-                scale = (1.0 / math.sqrt(self.d_k)) * self.attn_scale
+                # cosine_attn uses scale=1.0 (vectors already normalized), else standard scale
+                scale = 1.0 if self.cosine_attn else (1.0 / math.sqrt(self.d_k)) * self.attn_scale
                 scores = torch.matmul(Q, K.transpose(-2, -1)) * scale
+
+                # === ALiBi: add linear position biases per head ===
+                if self.alibi:
+                    seq_len_q = scores.size(-2)
+                    seq_len_k = scores.size(-1)
+                    pos = torch.arange(seq_len_k, device=scores.device, dtype=scores.dtype)
+                    pos_q = torch.arange(seq_len_q, device=scores.device, dtype=scores.dtype)
+                    # relative position bias: j - i (negative for causal, attending to past)
+                    rel_pos = pos.unsqueeze(0) - pos_q.unsqueeze(1)  # (T_q, T_k)
+                    rel_pos = rel_pos.unsqueeze(0).unsqueeze(0)  # (1, 1, T_q, T_k)
+                    slopes = self.alibi_slopes.view(1, self.n_heads, 1, 1)
+                    scores = scores + slopes * rel_pos
 
                 if self.attn_softcap is not None:
                     scores = self.attn_softcap * torch.tanh(scores / self.attn_softcap)
@@ -902,11 +998,11 @@ class MultiHeadAttentionAblation(nn.Module):
                 seq_len_q = scores.size(-2)
                 seq_len_k = scores.size(-1)
                 mask = torch.ones(seq_len_q, seq_len_k, dtype=torch.bool, device=scores.device).tril()
-                
+
                 if self.attn_window_size is not None:
                     window_mask = torch.ones(seq_len_q, seq_len_k, dtype=torch.bool, device=scores.device).tril(diagonal=-self.attn_window_size)
                     mask = mask & ~window_mask
-                    
+
                 scores = scores.masked_fill(~mask, float('-inf'))
 
                 if self.poly_order is not None:
@@ -978,12 +1074,20 @@ class TransformerBlockAblation(nn.Module):
         value_norm: bool = False,
         layer_scale_init: float | None = None,
         stochastic_depth_rate: float = 0.0,
+        # Gen9 novel mechanisms
+        cosine_attn: bool = False,
+        q_rope_only: bool = False,
+        alibi: bool = False,
+        gated_residual: bool = False,
+        gate_init: float = 0.0,          # sigmoid(gate_init) = starting gate value
+        gate_per_channel: bool = False,   # per-feature gate vector vs scalar
     ):
         super().__init__()
 
         self.norm_position  = norm_position
         self.residual_scale = residual_scale
         self.stochastic_depth_rate = stochastic_depth_rate
+        self.gated_residual = gated_residual
 
         self.attention = MultiHeadAttentionAblation(
             d_model, n_heads, max_seq_len, dropout, n_kv_heads,
@@ -994,6 +1098,7 @@ class TransformerBlockAblation(nn.Module):
             use_shared_qkv=use_shared_qkv, hilo_fraction=hilo_fraction,
             kv_pool_factor=kv_pool_factor, poly_order=poly_order,
             value_norm=value_norm,
+            cosine_attn=cosine_attn, q_rope_only=q_rope_only, alibi=alibi,
         )
         self.feed_forward = build_ffn(ffn_type, d_model, d_ff, dropout, activation_type, use_bias)
 
@@ -1014,6 +1119,14 @@ class TransformerBlockAblation(nn.Module):
             self.layer_scale1 = None
             self.layer_scale2 = None
 
+        # Gated residual: learned sigmoid gate controlling residual strength per block
+        # gate_init: sigmoid(gate_init) is the starting gate value (0.0 → 0.5, 2.0 → 0.88)
+        # gate_per_channel: learn d_model gate values instead of 1 scalar per sublayer
+        if gated_residual:
+            gate_shape = (d_model,) if gate_per_channel else (1,)
+            self.gate_attn = nn.Parameter(torch.full(gate_shape, float(gate_init)))
+            self.gate_ffn  = nn.Parameter(torch.full(gate_shape, float(gate_init)))
+
     def _apply_layer_scale(self, x, ls):
         if ls is not None:
             return x * ls
@@ -1025,25 +1138,32 @@ class TransformerBlockAblation(nn.Module):
             if torch.rand(1).item() < self.stochastic_depth_rate:
                 return x
 
+        # Gated residual multipliers (sigmoid gate; 0.5 at init, learned per block)
+        if self.gated_residual:
+            ga = torch.sigmoid(self.gate_attn)
+            gf = torch.sigmoid(self.gate_ffn)
+        else:
+            ga = gf = 1.0
+
         if self.norm_position == "pre":
             attn_out = self._apply_layer_scale(self.attention(self.norm1(x)), self.layer_scale1)
-            x = x + self.dropout_layer(attn_out) * self.residual_scale
+            x = x + ga * self.dropout_layer(attn_out) * self.residual_scale
             ff_out = self._apply_layer_scale(self.feed_forward(self.norm2(x)), self.layer_scale2)
-            x = x + self.dropout_layer(ff_out) * self.residual_scale
+            x = x + gf * self.dropout_layer(ff_out) * self.residual_scale
 
         elif self.norm_position == "post":
             attn_out = self._apply_layer_scale(self.attention(x), self.layer_scale1)
-            x = self.norm1(x + self.dropout_layer(attn_out) * self.residual_scale)
+            x = self.norm1(x + ga * self.dropout_layer(attn_out) * self.residual_scale)
             ff_out = self._apply_layer_scale(self.feed_forward(x), self.layer_scale2)
-            x = self.norm2(x + self.dropout_layer(ff_out) * self.residual_scale)
+            x = self.norm2(x + gf * self.dropout_layer(ff_out) * self.residual_scale)
 
         elif self.norm_position == "sandwich":
             attn_out = self.post_norm1(self.attention(self.norm1(x)))
             attn_out = self._apply_layer_scale(attn_out, self.layer_scale1)
-            x = x + self.dropout_layer(attn_out) * self.residual_scale
+            x = x + ga * self.dropout_layer(attn_out) * self.residual_scale
             ff_out = self.post_norm2(self.feed_forward(self.norm2(x)))
             ff_out = self._apply_layer_scale(ff_out, self.layer_scale2)
-            x = x + self.dropout_layer(ff_out) * self.residual_scale
+            x = x + gf * self.dropout_layer(ff_out) * self.residual_scale
 
         return x
 

@@ -1870,6 +1870,1247 @@ ABLATION_CONFIGS["g7_use_bias"]             = G7UseBiasConfig
 ABLATION_CONFIGS["g7_value_norm_parallel"]  = G7ValueNormParallelConfig
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 8 — experiments on top of g7_use_bias baseline
+#  Base: bilinear + residual_scale=0.5 + linear + warmup=0.02
+#        + muon_lr=0.018 + use_bias=True
+#  50 diverse experiments — windowed attn, RoPE, FFN, norm, init, combos
+# ══════════════════════════════════════════════════════════════════════════
+
+# --- GQA variants ---
+@dataclass
+class G8GQA1Config(G7UseBiasConfig):
+    experiment_name: str = "g8_gqa_1"
+    n_kv_heads: int = 1
+
+@dataclass
+class G8GQA2Config(G7UseBiasConfig):
+    experiment_name: str = "g8_gqa_2"
+    n_kv_heads: int = 2
+
+@dataclass
+class G8GQA8Config(G7UseBiasConfig):
+    experiment_name: str = "g8_gqa_8"
+    n_kv_heads: int = 8
+
+# --- RoPE base sweep ---
+@dataclass
+class G8Rope50kConfig(G7UseBiasConfig):
+    experiment_name: str = "g8_rope_50k"
+    rope_base: float = 50000.0
+
+@dataclass
+class G8Rope200kConfig(G7UseBiasConfig):
+    experiment_name: str = "g8_rope_200k"
+    rope_base: float = 200000.0
+
+@dataclass
+class G8Rope500kConfig(G7UseBiasConfig):
+    experiment_name: str = "g8_rope_500k"
+    rope_base: float = 500000.0
+
+@dataclass
+class G8Rope1mConfig(G7UseBiasConfig):
+    experiment_name: str = "g8_rope_1m"
+    rope_base: float = 1000000.0
+
+# --- Local windowed attention (never tried before) ---
+@dataclass
+class G8Window32Config(G7UseBiasConfig):
+    """Local attention window of 32 — forces strong locality bias."""
+    experiment_name: str = "g8_window_32"
+    attn_window_size: int = 32
+
+@dataclass
+class G8Window64Config(G7UseBiasConfig):
+    """Local attention window of 64."""
+    experiment_name: str = "g8_window_64"
+    attn_window_size: int = 64
+
+@dataclass
+class G8Window128Config(G7UseBiasConfig):
+    """Local attention window of 128 — moderate locality."""
+    experiment_name: str = "g8_window_128"
+    attn_window_size: int = 128
+
+# --- FFN type variants on new baseline ---
+@dataclass
+class G8GLUConfig(G7UseBiasConfig):
+    """GLU FFN on bias+muon_lr=0.018 baseline — never tested with these combined."""
+    experiment_name: str = "g8_glu"
+    ffn_type: str = "glu"
+
+@dataclass
+class G8SwiGLUBiasConfig(G7UseBiasConfig):
+    """SwiGLU re-tested now WITH bias — bias changed everything, swiglu may rank differently."""
+    experiment_name: str = "g8_swiglu_bias"
+    ffn_type: str = "swiglu"
+
+@dataclass
+class G8BilinearGeluConfig(G7UseBiasConfig):
+    """Bilinear gate with GELU — smooth non-monotonic gate different from squared_relu."""
+    experiment_name: str = "g8_bilinear_gelu"
+    activation_type: str = "gelu"
+
+@dataclass
+class G8BilinearReluConfig(G7UseBiasConfig):
+    """Bilinear gate with ReLU — hard sparse gate, very different saturation from squared_relu."""
+    experiment_name: str = "g8_bilinear_relu"
+    activation_type: str = "relu"
+
+@dataclass
+class G8FFN1536Config(G7UseBiasConfig):
+    """d_ff=1536 (3× d_model) — narrower bilinear FFN on bias baseline."""
+    experiment_name: str = "g8_ffn_1536"
+    d_ff: int = 1536
+
+@dataclass
+class G8FFN2560Config(G7UseBiasConfig):
+    """d_ff=2560 (5× d_model) — slightly wider."""
+    experiment_name: str = "g8_ffn_2560"
+    d_ff: int = 2560
+
+# --- Normalization ---
+@dataclass
+class G8LayerNormConfig(G7UseBiasConfig):
+    """Full LayerNorm instead of RMSNorm — re-test on bias baseline."""
+    experiment_name: str = "g8_layernorm"
+    norm_type: str = "layernorm"
+
+@dataclass
+class G8FinalLayerNormConfig(G7UseBiasConfig):
+    """LayerNorm only at the final output — keep body as RMSNorm."""
+    experiment_name: str = "g8_final_layernorm"
+    final_norm_type: str = "layernorm"
+
+@dataclass
+class G8LayerScale1e4Config(G7UseBiasConfig):
+    """Layer scale init=1e-4 — very conservative near-zero init for each residual branch."""
+    experiment_name: str = "g8_layer_scale_1e4"
+    layer_scale_init: float = 1e-4
+
+@dataclass
+class G8LayerScale001Config(G7UseBiasConfig):
+    """Layer scale init=0.01 — standard CaiT value."""
+    experiment_name: str = "g8_layer_scale_001"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G8LayerScale01Config(G7UseBiasConfig):
+    """Layer scale init=0.1 — larger; less conservative."""
+    experiment_name: str = "g8_layer_scale_01"
+    layer_scale_init: float = 0.1
+
+# --- Init schemes on bias baseline ---
+@dataclass
+class G8SmallEmbedInitConfig(G7UseBiasConfig):
+    """Small embedding init — scale down embed weights at init to reduce early noise."""
+    experiment_name: str = "g8_small_embed_init"
+    init_scheme: str = "small_embed"
+
+@dataclass
+class G8DepthScaledBiasConfig(G7UseBiasConfig):
+    """Depth-scaled init WITH bias — previously failed without bias; may behave differently."""
+    experiment_name: str = "g8_depth_scaled_bias"
+    init_scheme: str = "depth_scaled"
+
+# --- Optimizer structure ---
+@dataclass
+class G8MuonNS3Config(G7UseBiasConfig):
+    """muon_ns_steps=3 — fewer Newton-Schulz steps, cheaper but less accurate preconditioner."""
+    experiment_name: str = "g8_muon_ns3"
+    muon_ns_steps: int = 3
+
+@dataclass
+class G8MuonNS8Config(G7UseBiasConfig):
+    """muon_ns_steps=8 — more steps for a sharper preconditioner estimate."""
+    experiment_name: str = "g8_muon_ns8"
+    muon_ns_steps: int = 8
+
+@dataclass
+class G8MuonNS10Config(G7UseBiasConfig):
+    """muon_ns_steps=10 — maximum Newton-Schulz precision."""
+    experiment_name: str = "g8_muon_ns10"
+    muon_ns_steps: int = 10
+
+# --- Regularization (mechanistic, not sweep) ---
+@dataclass
+class G8StochDepth005Config(G7UseBiasConfig):
+    """Stochastic depth=0.05 on bias baseline — drop-path has never been tested here."""
+    experiment_name: str = "g8_stoch_005"
+    stochastic_depth: float = 0.05
+
+@dataclass
+class G8StochDepth010Config(G7UseBiasConfig):
+    """Stochastic depth=0.10 — stronger drop-path."""
+    experiment_name: str = "g8_stoch_010"
+    stochastic_depth: float = 0.10
+
+@dataclass
+class G8LabelSmoothConfig(G7UseBiasConfig):
+    """Label smoothing=0.05 — untested on bias baseline."""
+    experiment_name: str = "g8_label_smooth"
+    label_smoothing: float = 0.05
+
+@dataclass
+class G8Dropout005Config(G7UseBiasConfig):
+    """Dropout=0.05 — very light stochastic regularization."""
+    experiment_name: str = "g8_dropout_005"
+    dropout: float = 0.05
+
+@dataclass
+class G8ZLoss1e3Config(G7UseBiasConfig):
+    """z_loss=1e-3 — stronger logit entropy penalty than neutral 1e-4."""
+    experiment_name: str = "g8_z_loss_1e3"
+    z_loss_weight: float = 1e-3
+
+@dataclass
+class G8NoEmbedScaleConfig(G7UseBiasConfig):
+    """Remove embedding scale — test if use_embed_scale is still needed with bias."""
+    experiment_name: str = "g8_no_embed_scale"
+    use_embed_scale: bool = False
+
+# --- Novel combinations (mechanisms that failed alone but untested together) ---
+@dataclass
+class G8ValueNormBiasConfig(G7UseBiasConfig):
+    """value_norm=True WITH bias — value_norm failed without bias; bias may change dynamics."""
+    experiment_name: str = "g8_value_norm_bias"
+    value_norm: bool = True
+
+@dataclass
+class G8Rope500kGQA8Config(G7UseBiasConfig):
+    """Extended RoPE + full MHA — positional and attention head interaction."""
+    experiment_name: str = "g8_rope500k_gqa8"
+    rope_base: float = 500000.0
+    n_kv_heads: int = 8
+
+@dataclass
+class G8Rope50kGQA2Config(G7UseBiasConfig):
+    """RoPE 50k + GQA-2 — modest positional extension + aggressive KV sharing."""
+    experiment_name: str = "g8_rope50k_gqa2"
+    rope_base: float = 50000.0
+    n_kv_heads: int = 2
+
+@dataclass
+class G8Window64GQA2Config(G7UseBiasConfig):
+    """Windowed attention (64) + GQA-2 — local attention with aggressive KV sharing."""
+    experiment_name: str = "g8_window64_gqa2"
+    attn_window_size: int = 64
+    n_kv_heads: int = 2
+
+@dataclass
+class G8Window128Rope500kConfig(G7UseBiasConfig):
+    """Local window (128) + extended RoPE — local patterns with long-range positional bias."""
+    experiment_name: str = "g8_window128_rope500k"
+    attn_window_size: int = 128
+    rope_base: float = 500000.0
+
+@dataclass
+class G8LayerScaleGQA8Config(G7UseBiasConfig):
+    """Layer scale (0.01) + full MHA — layer scale might stabilize full attention."""
+    experiment_name: str = "g8_lscale_gqa8"
+    layer_scale_init: float = 0.01
+    n_kv_heads: int = 8
+
+@dataclass
+class G8SwiGLULayerScaleConfig(G7UseBiasConfig):
+    """SwiGLU + layer scale — different FFN + stabilized residuals."""
+    experiment_name: str = "g8_swiglu_lscale"
+    ffn_type: str = "swiglu"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G8GLULayerNormConfig(G7UseBiasConfig):
+    """GLU FFN + LayerNorm — two structural changes not tried together."""
+    experiment_name: str = "g8_glu_layernorm"
+    ffn_type: str = "glu"
+    norm_type: str = "layernorm"
+
+@dataclass
+class G8BilinearGeluLScaleConfig(G7UseBiasConfig):
+    """Bilinear+GELU gate + layer scale — smoother gate with stabilized residual."""
+    experiment_name: str = "g8_bgelu_lscale"
+    activation_type: str = "gelu"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G8StochDepthGeluConfig(G7UseBiasConfig):
+    """Stochastic depth + GELU gate — two regularization mechanisms combined."""
+    experiment_name: str = "g8_stoch_bgelu"
+    stochastic_depth: float = 0.05
+    activation_type: str = "gelu"
+
+@dataclass
+class G8DepthScaledLayerScaleConfig(G7UseBiasConfig):
+    """Depth-scaled init + layer scale — two depth-aware stabilization methods together."""
+    experiment_name: str = "g8_depth_lscale"
+    init_scheme: str = "depth_scaled"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G8ValueNormRope500kConfig(G7UseBiasConfig):
+    """value_norm + extended RoPE — attention output regularization + positional extension."""
+    experiment_name: str = "g8_vnorm_rope500k"
+    value_norm: bool = True
+    rope_base: float = 500000.0
+
+@dataclass
+class G8MuonNS10Rope500kConfig(G7UseBiasConfig):
+    """muon_ns_steps=10 + rope_base=500k — precise optimizer + extended positional."""
+    experiment_name: str = "g8_ns10_rope500k"
+    muon_ns_steps: int = 10
+    rope_base: float = 500000.0
+
+@dataclass
+class G8GQA1Window128Config(G7UseBiasConfig):
+    """MQA (1 KV head) + local window (128) — extreme KV compression + forced locality."""
+    experiment_name: str = "g8_gqa1_window128"
+    n_kv_heads: int = 1
+    attn_window_size: int = 128
+
+@dataclass
+class G8LabelSmoothRope500kConfig(G7UseBiasConfig):
+    """Label smoothing + extended RoPE — regularization + positional extension."""
+    experiment_name: str = "g8_lsmooth_rope500k"
+    label_smoothing: float = 0.05
+    rope_base: float = 500000.0
+
+@dataclass
+class G8GeluLScaleGQA8Config(G7UseBiasConfig):
+    """GELU gate + layer scale + full MHA — three mild changes never tried together."""
+    experiment_name: str = "g8_gelu_ls_gqa8"
+    activation_type: str = "gelu"
+    layer_scale_init: float = 0.01
+    n_kv_heads: int = 8
+
+@dataclass
+class G8SwiGLUGQA1Config(G7UseBiasConfig):
+    """SwiGLU + MQA — test if MQA works better with SwiGLU than bilinear."""
+    experiment_name: str = "g8_swiglu_gqa1"
+    ffn_type: str = "swiglu"
+    n_kv_heads: int = 1
+
+@dataclass
+class G8BilinearTanhLScaleConfig(G7UseBiasConfig):
+    """Bilinear+tanh gate + layer scale — tanh failed before; layer scale may save it."""
+    experiment_name: str = "g8_btanh_lscale"
+    activation_type: str = "tanh"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G8Window32Rope1mConfig(G7UseBiasConfig):
+    """Tight local window (32) + extreme RoPE extension — hyper-local + hyper-extended."""
+    experiment_name: str = "g8_window32_rope1m"
+    attn_window_size: int = 32
+    rope_base: float = 1000000.0
+
+# Register Gen8 configs
+ABLATION_CONFIGS["g8_gqa_1"]           = G8GQA1Config
+ABLATION_CONFIGS["g8_gqa_2"]           = G8GQA2Config
+ABLATION_CONFIGS["g8_gqa_8"]           = G8GQA8Config
+ABLATION_CONFIGS["g8_rope_50k"]        = G8Rope50kConfig
+ABLATION_CONFIGS["g8_rope_200k"]       = G8Rope200kConfig
+ABLATION_CONFIGS["g8_rope_500k"]       = G8Rope500kConfig
+ABLATION_CONFIGS["g8_rope_1m"]         = G8Rope1mConfig
+ABLATION_CONFIGS["g8_window_32"]       = G8Window32Config
+ABLATION_CONFIGS["g8_window_64"]       = G8Window64Config
+ABLATION_CONFIGS["g8_window_128"]      = G8Window128Config
+ABLATION_CONFIGS["g8_glu"]             = G8GLUConfig
+ABLATION_CONFIGS["g8_swiglu_bias"]     = G8SwiGLUBiasConfig
+ABLATION_CONFIGS["g8_bilinear_gelu"]   = G8BilinearGeluConfig
+ABLATION_CONFIGS["g8_bilinear_relu"]   = G8BilinearReluConfig
+ABLATION_CONFIGS["g8_ffn_1536"]        = G8FFN1536Config
+ABLATION_CONFIGS["g8_ffn_2560"]        = G8FFN2560Config
+ABLATION_CONFIGS["g8_layernorm"]       = G8LayerNormConfig
+ABLATION_CONFIGS["g8_final_layernorm"] = G8FinalLayerNormConfig
+ABLATION_CONFIGS["g8_layer_scale_1e4"] = G8LayerScale1e4Config
+ABLATION_CONFIGS["g8_layer_scale_001"] = G8LayerScale001Config
+ABLATION_CONFIGS["g8_layer_scale_01"]  = G8LayerScale01Config
+ABLATION_CONFIGS["g8_small_embed_init"]= G8SmallEmbedInitConfig
+ABLATION_CONFIGS["g8_depth_scaled_bias"]= G8DepthScaledBiasConfig
+ABLATION_CONFIGS["g8_muon_ns3"]        = G8MuonNS3Config
+ABLATION_CONFIGS["g8_muon_ns8"]        = G8MuonNS8Config
+ABLATION_CONFIGS["g8_muon_ns10"]       = G8MuonNS10Config
+ABLATION_CONFIGS["g8_stoch_005"]       = G8StochDepth005Config
+ABLATION_CONFIGS["g8_stoch_010"]       = G8StochDepth010Config
+ABLATION_CONFIGS["g8_label_smooth"]    = G8LabelSmoothConfig
+ABLATION_CONFIGS["g8_dropout_005"]     = G8Dropout005Config
+ABLATION_CONFIGS["g8_z_loss_1e3"]      = G8ZLoss1e3Config
+ABLATION_CONFIGS["g8_no_embed_scale"]  = G8NoEmbedScaleConfig
+ABLATION_CONFIGS["g8_value_norm_bias"] = G8ValueNormBiasConfig
+ABLATION_CONFIGS["g8_rope500k_gqa8"]   = G8Rope500kGQA8Config
+ABLATION_CONFIGS["g8_rope50k_gqa2"]    = G8Rope50kGQA2Config
+ABLATION_CONFIGS["g8_window64_gqa2"]   = G8Window64GQA2Config
+ABLATION_CONFIGS["g8_window128_rope500k"] = G8Window128Rope500kConfig
+ABLATION_CONFIGS["g8_lscale_gqa8"]     = G8LayerScaleGQA8Config
+ABLATION_CONFIGS["g8_swiglu_lscale"]   = G8SwiGLULayerScaleConfig
+ABLATION_CONFIGS["g8_glu_layernorm"]   = G8GLULayerNormConfig
+ABLATION_CONFIGS["g8_bgelu_lscale"]    = G8BilinearGeluLScaleConfig
+ABLATION_CONFIGS["g8_stoch_bgelu"]     = G8StochDepthGeluConfig
+ABLATION_CONFIGS["g8_depth_lscale"]    = G8DepthScaledLayerScaleConfig
+ABLATION_CONFIGS["g8_vnorm_rope500k"]  = G8ValueNormRope500kConfig
+ABLATION_CONFIGS["g8_ns10_rope500k"]   = G8MuonNS10Rope500kConfig
+ABLATION_CONFIGS["g8_gqa1_window128"]  = G8GQA1Window128Config
+ABLATION_CONFIGS["g8_lsmooth_rope500k"]= G8LabelSmoothRope500kConfig
+ABLATION_CONFIGS["g8_gelu_ls_gqa8"]    = G8GeluLScaleGQA8Config
+ABLATION_CONFIGS["g8_swiglu_gqa1"]     = G8SwiGLUGQA1Config
+ABLATION_CONFIGS["g8_btanh_lscale"]    = G8BilinearTanhLScaleConfig
+ABLATION_CONFIGS["g8_window32_rope1m"] = G8Window32Rope1mConfig
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 9 — 50 novel experiments on top of g7_use_bias baseline
+#  Base: bilinear FFN + residual_scale=0.5 + linear schedule + warmup=0.02
+#        + muon_lr=0.018 + use_bias=True
+#  Three categories:
+#   A. 20 Novel Muon optimizer variants — algorithmic changes to ortho update
+#   B. 10 Novel FFN gate activations — new gating functions on bilinear FFN
+#   C. 6  Novel attention/structural mechanisms — cosine attn, ALiBi, etc.
+#   D. 14 Combination experiments — pairs of winning mechanisms
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Category A: 20 Novel Muon Optimizer Variants ─────────────────────────
+# Each changes only the orthogonalization or momentum algorithm.
+
+@dataclass
+class G9MuonPostMomConfig(G7UseBiasConfig):
+    """Post-momentum Muon: ortho(grad) first, then apply momentum to orthogonalized updates.
+    Standard Muon: momentum(grad) → ortho. This reversal changes what is being smoothed."""
+    experiment_name: str = "g9_muon_post_mom"
+    muon_post_momentum: bool = True
+
+@dataclass
+class G9MuonGradCenterConfig(G7UseBiasConfig):
+    """Gradient centralization: subtract row mean from grad before ortho.
+    Reduces inter-neuron coupling; proven helpful in CV, untested in Muon."""
+    experiment_name: str = "g9_muon_grad_center"
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G9MuonHalfOrtho05Config(G7UseBiasConfig):
+    """50/50 blend of raw normalized gradient and orthogonalized gradient.
+    Tests whether partial orthogonalization is better than full ortho."""
+    experiment_name: str = "g9_muon_half_ortho_05"
+    muon_half_ortho: float = 0.5
+
+@dataclass
+class G9MuonHalfOrtho02Config(G7UseBiasConfig):
+    """20% ortho / 80% raw gradient blend — strongly biased toward raw gradient direction."""
+    experiment_name: str = "g9_muon_half_ortho_02"
+    muon_half_ortho: float = 0.2
+
+@dataclass
+class G9MuonCautiousConfig(G7UseBiasConfig):
+    """Cautious Muon: zero update elements where sign(update) != sign(original grad).
+    From Cautious Optimizers paper — prevents conflicting gradient information."""
+    experiment_name: str = "g9_muon_cautious"
+    muon_cautious: bool = True
+
+@dataclass
+class G9MuonFrobScaleConfig(G7UseBiasConfig):
+    """Frobenius-norm scaling: replace aspect-ratio scale with ||G||_F / sqrt(m*n).
+    Adapts update magnitude based on actual gradient magnitude rather than shape."""
+    experiment_name: str = "g9_muon_frob_scale"
+    muon_frob_scale: bool = True
+
+@dataclass
+class G9MuonDoubleOrthoConfig(G7UseBiasConfig):
+    """Double orthogonalization: apply polar express twice in sequence.
+    Second pass refines the approximation for better orthogonality quality."""
+    experiment_name: str = "g9_muon_double_ortho"
+    muon_double_ortho: bool = True
+
+@dataclass
+class G9MuonSignMix01Config(G7UseBiasConfig):
+    """Sign mix 10%: ortho(g) + 0.1*sign(g). Blends orthogonalized gradient with
+    sign gradient (Adam-style). Tests synergy between ortho and sign directions."""
+    experiment_name: str = "g9_muon_sign_mix_01"
+    muon_sign_mix: float = 0.1
+
+@dataclass
+class G9MuonSignMix05Config(G7UseBiasConfig):
+    """Sign mix 50%: ortho(g) + 0.5*sign(g). Stronger Adam-like blending into Muon."""
+    experiment_name: str = "g9_muon_sign_mix_05"
+    muon_sign_mix: float = 0.5
+
+@dataclass
+class G9MuonRowNormConfig(G7UseBiasConfig):
+    """Row-normalize gradient before polar express: each row becomes unit norm.
+    Removes per-neuron magnitude, making ortho purely directional."""
+    experiment_name: str = "g9_muon_row_norm"
+    muon_row_norm: bool = True
+
+@dataclass
+class G9MuonColNormConfig(G7UseBiasConfig):
+    """Column-normalize gradient before polar express: each column becomes unit norm.
+    Dual of row_norm — normalizes per-feature rather than per-neuron."""
+    experiment_name: str = "g9_muon_col_norm"
+    muon_col_norm: bool = True
+
+@dataclass
+class G9MuonEmaOrthoConfig(G7UseBiasConfig):
+    """EMA buffer on orthogonalized updates (separate from momentum on raw grad).
+    Smooths the ortho output independently of the gradient momentum."""
+    experiment_name: str = "g9_muon_ema_ortho"
+    muon_ema_ortho: bool = True
+
+@dataclass
+class G9MuonAdaptiveNsConfig(G7UseBiasConfig):
+    """Adaptive NS steps: use more polar express steps for larger matrices.
+    Larger weight matrices need more iterations to converge to true unitary."""
+    experiment_name: str = "g9_muon_adaptive_ns"
+    muon_adaptive_ns: bool = True
+
+@dataclass
+class G9MuonTrustRegionConfig(G7UseBiasConfig):
+    """Trust-region clipping: ||delta|| <= 0.05 * ||param||.
+    Prevents large updates relative to current parameter scale."""
+    experiment_name: str = "g9_muon_trust_region"
+    muon_trust_region: float = 0.05
+
+@dataclass
+class G9MuonUpdateClipConfig(G7UseBiasConfig):
+    """Clip orthogonalized update Frobenius norm to 1.0 before scaling.
+    Decouples update magnitude from matrix dimensions."""
+    experiment_name: str = "g9_muon_update_clip"
+    muon_update_clip: float = 1.0
+
+@dataclass
+class G9MuonStochOrthoConfig(G7UseBiasConfig):
+    """Stochastic orthogonalization: skip polar express with 10% probability.
+    Adds noise to ortho process; may act as implicit regularization."""
+    experiment_name: str = "g9_muon_stoch_ortho"
+    muon_stochastic_ortho: float = 0.1
+
+@dataclass
+class G9MuonWarmMomConfig(G7UseBiasConfig):
+    """Momentum warmup: ramp from 0.5 to 0.95 over first 100 steps.
+    Early training uses lower momentum for more responsive updates."""
+    experiment_name: str = "g9_muon_warm_mom"
+    muon_warm_momentum: bool = True
+    muon_warm_momentum_steps: int = 100
+
+@dataclass
+class G9MuonRmsNormConfig(G7UseBiasConfig):
+    """RMS-normalize gradient before ortho: divide by sqrt(mean(g²)).
+    Removes gradient scale heterogeneity before orthogonalization."""
+    experiment_name: str = "g9_muon_rms_norm"
+    muon_rms_norm_grad: bool = True
+
+@dataclass
+class G9MuonCautiousCenterConfig(G7UseBiasConfig):
+    """Combo: cautious masking + gradient centralization.
+    Two complementary corrections: directional filtering + mean removal."""
+    experiment_name: str = "g9_muon_cautious_center"
+    muon_cautious: bool = True
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G9MuonDoubleFrobConfig(G7UseBiasConfig):
+    """Combo: double ortho + frobenius norm scaling.
+    Better orthogonality quality + adaptive scaling by gradient magnitude."""
+    experiment_name: str = "g9_muon_double_frob"
+    muon_double_ortho: bool = True
+    muon_frob_scale: bool = True
+
+
+# ── Category B: 10 Novel FFN Gate Activations ────────────────────────────
+# Current baseline bilinear FFN: gate(x) * up(x) — no activation on gate (pure bilinear).
+# These test different nonlinearities applied to the gate path. NONE of these tried before.
+
+@dataclass
+class G9BilinearEluConfig(G7UseBiasConfig):
+    """ELU(gate) × up — smooth at 0, allows negative outputs, bounded negative response."""
+    experiment_name: str = "g9_bilinear_elu"
+    ffn_type: str = "bilinear_elu"
+
+@dataclass
+class G9BilinearSoftplusConfig(G7UseBiasConfig):
+    """softplus(gate) × up — smooth approximation to ReLU, always positive, log(1+e^x)."""
+    experiment_name: str = "g9_bilinear_softplus"
+    ffn_type: str = "bilinear_softplus"
+
+@dataclass
+class G9BilinearCosConfig(G7UseBiasConfig):
+    """cos(gate) × up — periodic/oscillatory gate; selects features with spatial periodicity."""
+    experiment_name: str = "g9_bilinear_cos"
+    ffn_type: str = "bilinear_cos"
+
+@dataclass
+class G9BilinearAbsConfig(G7UseBiasConfig):
+    """|gate| × up — symmetric activation; no sign information, only magnitude matters."""
+    experiment_name: str = "g9_bilinear_abs"
+    ffn_type: str = "bilinear_abs"
+
+@dataclass
+class G9BilinearSqrConfig(G7UseBiasConfig):
+    """gate² × up — quadratic gate; always positive, stronger at large values."""
+    experiment_name: str = "g9_bilinear_sqr"
+    ffn_type: str = "bilinear_sqr"
+
+@dataclass
+class G9BilinearCubicConfig(G7UseBiasConfig):
+    """gate³ × up — cubic gate; odd function, allows strong negative gating."""
+    experiment_name: str = "g9_bilinear_cubic"
+    ffn_type: str = "bilinear_cubic"
+
+@dataclass
+class G9BilinearGaussianConfig(G7UseBiasConfig):
+    """exp(-gate²) × up — Gaussian gate; local feature selection, peaks at 0."""
+    experiment_name: str = "g9_bilinear_gaussian"
+    ffn_type: str = "bilinear_gaussian"
+
+@dataclass
+class G9BilinearStarConfig(G7UseBiasConfig):
+    """gate*σ(gate) × up — StarReLU-like gate; combines linear and sigmoid."""
+    experiment_name: str = "g9_bilinear_star"
+    ffn_type: str = "bilinear_star"
+
+@dataclass
+class G9BilinearMishConfig(G7UseBiasConfig):
+    """Mish(gate) × up — gate*tanh(softplus(gate)); smooth, non-monotonic."""
+    experiment_name: str = "g9_bilinear_mish"
+    ffn_type: str = "bilinear_mish"
+
+@dataclass
+class G9BilinearSqSiluConfig(G7UseBiasConfig):
+    """SiLU(gate)² × up — squared SiLU gate; always positive, sharper than SiLU."""
+    experiment_name: str = "g9_bilinear_sq_silu"
+    ffn_type: str = "bilinear_sq_silu"
+
+
+# ── Category C: 6 Novel Attention/Structural Mechanisms ──────────────────
+
+@dataclass
+class G9CosineAttnConfig(G7UseBiasConfig):
+    """Cosine similarity attention: L2-normalize Q and K before dot product.
+    Scale=1.0 (no sqrt(d) needed); theoretically cleaner similarity metric."""
+    experiment_name: str = "g9_cosine_attn"
+    cosine_attn: bool = True
+
+@dataclass
+class G9QRopeOnlyConfig(G7UseBiasConfig):
+    """RoPE applied to Q only, not K. Asymmetric positional encoding.
+    K retains absolute representation; Q carries positional query signal."""
+    experiment_name: str = "g9_q_rope_only"
+    q_rope_only: bool = True
+
+@dataclass
+class G9GatedResidualConfig(G7UseBiasConfig):
+    """Learned sigmoid gate on each residual connection (per block).
+    Gate starts at 0.5 (sigmoid(0)); model learns optimal residual strength."""
+    experiment_name: str = "g9_gated_residual"
+    gated_residual: bool = True
+
+@dataclass
+class G9AlibiConfig(G7UseBiasConfig):
+    """ALiBi: attention with linear biases instead of RoPE.
+    Head-specific linear decay bias on logits; no learned positional encoding."""
+    experiment_name: str = "g9_alibi"
+    alibi: bool = True
+    use_rope: bool = False  # ALiBi replaces RoPE
+
+@dataclass
+class G9Residual040Config(G7UseBiasConfig):
+    """residual_scale=0.4 — search below current best 0.5."""
+    experiment_name: str = "g9_residual_040"
+    residual_scale: float = 0.4
+
+@dataclass
+class G9Residual035Config(G7UseBiasConfig):
+    """residual_scale=0.35 — more aggressive DeepNorm scaling."""
+    experiment_name: str = "g9_residual_035"
+    residual_scale: float = 0.35
+
+
+# ── Category D: 14 Combination Experiments ───────────────────────────────
+# Pair new mechanisms together; some combinations have specific mechanistic hypotheses.
+
+@dataclass
+class G9BilinearEluRs04Config(G7UseBiasConfig):
+    """ELU bilinear gate + residual_scale=0.4. ELU's smoothness may pair with tighter residual."""
+    experiment_name: str = "g9_bilinear_elu_rs04"
+    ffn_type: str = "bilinear_elu"
+    residual_scale: float = 0.4
+
+@dataclass
+class G9BilinearEluCosineAttnConfig(G7UseBiasConfig):
+    """ELU bilinear + cosine attention. Two novel mechanisms; orthogonal in effect."""
+    experiment_name: str = "g9_bilinear_elu_cosine_attn"
+    ffn_type: str = "bilinear_elu"
+    cosine_attn: bool = True
+
+@dataclass
+class G9BilinearEluQRopeConfig(G7UseBiasConfig):
+    """ELU bilinear + Q-only RoPE. Novel FFN gate + asymmetric positional encoding."""
+    experiment_name: str = "g9_bilinear_elu_q_rope"
+    ffn_type: str = "bilinear_elu"
+    q_rope_only: bool = True
+
+@dataclass
+class G9BilinearEluGatedResConfig(G7UseBiasConfig):
+    """ELU bilinear + gated residual. Novel FFN + adaptive residual strength."""
+    experiment_name: str = "g9_bilinear_elu_gated_res"
+    ffn_type: str = "bilinear_elu"
+    gated_residual: bool = True
+
+@dataclass
+class G9BilinearEluCautiousConfig(G7UseBiasConfig):
+    """ELU bilinear + cautious Muon. Novel FFN gate + directionally filtered updates."""
+    experiment_name: str = "g9_bilinear_elu_cautious"
+    ffn_type: str = "bilinear_elu"
+    muon_cautious: bool = True
+
+@dataclass
+class G9BilinearEluGradCenterConfig(G7UseBiasConfig):
+    """ELU bilinear + Muon gradient centralization. Novel FFN + mean-removed ortho updates."""
+    experiment_name: str = "g9_bilinear_elu_grad_center"
+    ffn_type: str = "bilinear_elu"
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G9BilinearEluDoubleOrthoConfig(G7UseBiasConfig):
+    """ELU bilinear + double orthogonalization. Novel gate + higher-quality ortho updates."""
+    experiment_name: str = "g9_bilinear_elu_double_ortho"
+    ffn_type: str = "bilinear_elu"
+    muon_double_ortho: bool = True
+
+@dataclass
+class G9BilinearSoftplusRs04Config(G7UseBiasConfig):
+    """Softplus bilinear + residual_scale=0.4. Smooth positive gate + tighter residual."""
+    experiment_name: str = "g9_bilinear_softplus_rs04"
+    ffn_type: str = "bilinear_softplus"
+    residual_scale: float = 0.4
+
+@dataclass
+class G9CosineAttnGatedResConfig(G7UseBiasConfig):
+    """Cosine attention + gated residual. Normalized similarity + adaptive residual depth."""
+    experiment_name: str = "g9_cosine_attn_gated_res"
+    cosine_attn: bool = True
+    gated_residual: bool = True
+
+@dataclass
+class G9AlibiEluConfig(G7UseBiasConfig):
+    """ALiBi + ELU bilinear. Position-linear bias + novel gate; two novel mechanisms."""
+    experiment_name: str = "g9_alibi_elu"
+    alibi: bool = True
+    use_rope: bool = False
+    ffn_type: str = "bilinear_elu"
+
+@dataclass
+class G9QRopeGatedResConfig(G7UseBiasConfig):
+    """Q-only RoPE + gated residual. Asymmetric position + adaptive residual."""
+    experiment_name: str = "g9_q_rope_gated_res"
+    q_rope_only: bool = True
+    gated_residual: bool = True
+
+@dataclass
+class G9BilinearStarRs04Config(G7UseBiasConfig):
+    """StarReLU-like gate + residual_scale=0.4. StarReLU: x*σ(x) as gate."""
+    experiment_name: str = "g9_bilinear_star_rs04"
+    ffn_type: str = "bilinear_star"
+    residual_scale: float = 0.4
+
+@dataclass
+class G9BilinearGaussRs035Config(G7UseBiasConfig):
+    """Gaussian gate + residual_scale=0.35. Local feature selection + aggressive DeepNorm."""
+    experiment_name: str = "g9_bilinear_gauss_rs035"
+    ffn_type: str = "bilinear_gaussian"
+    residual_scale: float = 0.35
+
+@dataclass
+class G9BilinearEluPostMomConfig(G7UseBiasConfig):
+    """ELU bilinear + post-momentum Muon. Novel gate + reversed ortho/momentum order."""
+    experiment_name: str = "g9_bilinear_elu_post_mom"
+    ffn_type: str = "bilinear_elu"
+    muon_post_momentum: bool = True
+
+
+# ── Gen9 Registry ─────────────────────────────────────────────────────────
+# Category A: Muon variants
+ABLATION_CONFIGS["g9_muon_post_mom"]        = G9MuonPostMomConfig
+ABLATION_CONFIGS["g9_muon_grad_center"]     = G9MuonGradCenterConfig
+ABLATION_CONFIGS["g9_muon_half_ortho_05"]   = G9MuonHalfOrtho05Config
+ABLATION_CONFIGS["g9_muon_half_ortho_02"]   = G9MuonHalfOrtho02Config
+ABLATION_CONFIGS["g9_muon_cautious"]        = G9MuonCautiousConfig
+ABLATION_CONFIGS["g9_muon_frob_scale"]      = G9MuonFrobScaleConfig
+ABLATION_CONFIGS["g9_muon_double_ortho"]    = G9MuonDoubleOrthoConfig
+ABLATION_CONFIGS["g9_muon_sign_mix_01"]     = G9MuonSignMix01Config
+ABLATION_CONFIGS["g9_muon_sign_mix_05"]     = G9MuonSignMix05Config
+ABLATION_CONFIGS["g9_muon_row_norm"]        = G9MuonRowNormConfig
+ABLATION_CONFIGS["g9_muon_col_norm"]        = G9MuonColNormConfig
+ABLATION_CONFIGS["g9_muon_ema_ortho"]       = G9MuonEmaOrthoConfig
+ABLATION_CONFIGS["g9_muon_adaptive_ns"]     = G9MuonAdaptiveNsConfig
+ABLATION_CONFIGS["g9_muon_trust_region"]    = G9MuonTrustRegionConfig
+ABLATION_CONFIGS["g9_muon_update_clip"]     = G9MuonUpdateClipConfig
+ABLATION_CONFIGS["g9_muon_stoch_ortho"]     = G9MuonStochOrthoConfig
+ABLATION_CONFIGS["g9_muon_warm_mom"]        = G9MuonWarmMomConfig
+ABLATION_CONFIGS["g9_muon_rms_norm"]        = G9MuonRmsNormConfig
+ABLATION_CONFIGS["g9_muon_cautious_center"] = G9MuonCautiousCenterConfig
+ABLATION_CONFIGS["g9_muon_double_frob"]     = G9MuonDoubleFrobConfig
+# Category B: Novel FFN gate types
+ABLATION_CONFIGS["g9_bilinear_elu"]         = G9BilinearEluConfig
+ABLATION_CONFIGS["g9_bilinear_softplus"]    = G9BilinearSoftplusConfig
+ABLATION_CONFIGS["g9_bilinear_cos"]         = G9BilinearCosConfig
+ABLATION_CONFIGS["g9_bilinear_abs"]         = G9BilinearAbsConfig
+ABLATION_CONFIGS["g9_bilinear_sqr"]         = G9BilinearSqrConfig
+ABLATION_CONFIGS["g9_bilinear_cubic"]       = G9BilinearCubicConfig
+ABLATION_CONFIGS["g9_bilinear_gaussian"]    = G9BilinearGaussianConfig
+ABLATION_CONFIGS["g9_bilinear_star"]        = G9BilinearStarConfig
+ABLATION_CONFIGS["g9_bilinear_mish"]        = G9BilinearMishConfig
+ABLATION_CONFIGS["g9_bilinear_sq_silu"]     = G9BilinearSqSiluConfig
+# Category C: Novel attention/structural mechanisms
+ABLATION_CONFIGS["g9_cosine_attn"]          = G9CosineAttnConfig
+ABLATION_CONFIGS["g9_q_rope_only"]          = G9QRopeOnlyConfig
+ABLATION_CONFIGS["g9_gated_residual"]       = G9GatedResidualConfig
+ABLATION_CONFIGS["g9_alibi"]                = G9AlibiConfig
+ABLATION_CONFIGS["g9_residual_040"]         = G9Residual040Config
+ABLATION_CONFIGS["g9_residual_035"]         = G9Residual035Config
+# Category D: Combinations
+ABLATION_CONFIGS["g9_bilinear_elu_rs04"]        = G9BilinearEluRs04Config
+ABLATION_CONFIGS["g9_bilinear_elu_cosine_attn"] = G9BilinearEluCosineAttnConfig
+ABLATION_CONFIGS["g9_bilinear_elu_q_rope"]      = G9BilinearEluQRopeConfig
+ABLATION_CONFIGS["g9_bilinear_elu_gated_res"]   = G9BilinearEluGatedResConfig
+ABLATION_CONFIGS["g9_bilinear_elu_cautious"]    = G9BilinearEluCautiousConfig
+ABLATION_CONFIGS["g9_bilinear_elu_grad_center"] = G9BilinearEluGradCenterConfig
+ABLATION_CONFIGS["g9_bilinear_elu_double_ortho"]= G9BilinearEluDoubleOrthoConfig
+ABLATION_CONFIGS["g9_bilinear_softplus_rs04"]   = G9BilinearSoftplusRs04Config
+ABLATION_CONFIGS["g9_cosine_attn_gated_res"]    = G9CosineAttnGatedResConfig
+ABLATION_CONFIGS["g9_alibi_elu"]                = G9AlibiEluConfig
+ABLATION_CONFIGS["g9_q_rope_gated_res"]         = G9QRopeGatedResConfig
+ABLATION_CONFIGS["g9_bilinear_star_rs04"]       = G9BilinearStarRs04Config
+ABLATION_CONFIGS["g9_bilinear_gauss_rs035"]     = G9BilinearGaussRs035Config
+ABLATION_CONFIGS["g9_bilinear_elu_post_mom"]    = G9BilinearEluPostMomConfig
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 10 — 50 experiments on top of g9_gated_residual baseline
+#  New best: g9_gated_residual — val_loss 4.8844
+#  Base: G7UseBias + gated_residual=True
+#  Key finding: learned sigmoid gate per block is a genuine improvement.
+#  Gen10 probes: how far can we push this, what stacks with it, new mechanisms.
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class G9GatedResidualConfig(G7UseBiasConfig):
+    """New Gen10 baseline: gated_residual=True on top of g7_use_bias.
+    val_loss 4.8844 — learned sigmoid gate on each residual connection."""
+    experiment_name: str = "g9_gated_residual_baseline"
+    gated_residual: bool = True
+
+# Alias for clarity
+G10BaseConfig = G9GatedResidualConfig
+
+
+# ── A: Residual scale stacking with gated residual (8 experiments) ────────
+# gated_residual already starts at sigmoid(0)=0.5 effective scale.
+# Key question: does fixed residual_scale still matter on top of learned gate?
+
+@dataclass
+class G10GatedRs035Config(G10BaseConfig):
+    """Gated residual + residual_scale=0.35. Both win independently — do they compound?"""
+    experiment_name: str = "g10_gated_rs035"
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GatedRs040Config(G10BaseConfig):
+    """Gated residual + residual_scale=0.40."""
+    experiment_name: str = "g10_gated_rs040"
+    residual_scale: float = 0.40
+
+@dataclass
+class G10GatedRs060Config(G10BaseConfig):
+    """Gated residual + residual_scale=0.60 — above current 0.5."""
+    experiment_name: str = "g10_gated_rs060"
+    residual_scale: float = 0.60
+
+@dataclass
+class G10GatedRs100Config(G10BaseConfig):
+    """Gated residual + residual_scale=1.0 — let gate handle ALL scaling."""
+    experiment_name: str = "g10_gated_rs100"
+    residual_scale: float = 1.0
+
+@dataclass
+class G10GatedRs025Config(G10BaseConfig):
+    """Gated residual + residual_scale=0.25 — very aggressive DeepNorm + gate."""
+    experiment_name: str = "g10_gated_rs025"
+    residual_scale: float = 0.25
+
+
+# ── B: Gate initialization variants (4 experiments) ──────────────────────
+# Default gate init: sigmoid(0.0)=0.5 (half-open). Test other starting points.
+
+@dataclass
+class G10GateInitHighConfig(G10BaseConfig):
+    """Gate initialized nearly open: sigmoid(2.0)≈0.88. Starts closer to standard residual."""
+    experiment_name: str = "g10_gate_init_high"
+    gate_init: float = 2.0
+
+@dataclass
+class G10GateInitLowConfig(G10BaseConfig):
+    """Gate initialized nearly closed: sigmoid(-2.0)≈0.12. Aggressive residual suppression."""
+    experiment_name: str = "g10_gate_init_low"
+    gate_init: float = -2.0
+
+@dataclass
+class G10GateInitOpenConfig(G10BaseConfig):
+    """Gate initialized fully open: sigmoid(4.0)≈0.98. Acts like normal residual at init."""
+    experiment_name: str = "g10_gate_init_open"
+    gate_init: float = 4.0
+
+@dataclass
+class G10GatePerChannelConfig(G10BaseConfig):
+    """Per-channel gate: d_model scalar gates per sublayer instead of 1 per block.
+    Much richer gating — model can selectively pass/block individual features."""
+    experiment_name: str = "g10_gate_per_channel"
+    gate_per_channel: bool = True
+
+
+# ── C: Stack gated_residual with winning Muon variants (10 experiments) ──
+# Testing if optimizer improvements compound with the gated residual mechanism.
+
+@dataclass
+class G10GatedMuonPostMomConfig(G10BaseConfig):
+    """Gated residual + post-momentum Muon."""
+    experiment_name: str = "g10_gated_muon_post_mom"
+    muon_post_momentum: bool = True
+
+@dataclass
+class G10GatedMuonGradCenterConfig(G10BaseConfig):
+    """Gated residual + gradient centralization."""
+    experiment_name: str = "g10_gated_muon_grad_center"
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G10GatedMuonCautiousConfig(G10BaseConfig):
+    """Gated residual + cautious Muon updates."""
+    experiment_name: str = "g10_gated_muon_cautious"
+    muon_cautious: bool = True
+
+@dataclass
+class G10GatedMuonDoubleOrthoConfig(G10BaseConfig):
+    """Gated residual + double orthogonalization."""
+    experiment_name: str = "g10_gated_muon_double_ortho"
+    muon_double_ortho: bool = True
+
+@dataclass
+class G10GatedMuonAdaptiveNsConfig(G10BaseConfig):
+    """Gated residual + adaptive NS steps."""
+    experiment_name: str = "g10_gated_muon_adaptive_ns"
+    muon_adaptive_ns: bool = True
+
+@dataclass
+class G10GatedMuonWarmMomConfig(G10BaseConfig):
+    """Gated residual + momentum warmup."""
+    experiment_name: str = "g10_gated_muon_warm_mom"
+    muon_warm_momentum: bool = True
+    muon_warm_momentum_steps: int = 100
+
+@dataclass
+class G10GatedMuonRmsNormConfig(G10BaseConfig):
+    """Gated residual + RMS-normalize gradient."""
+    experiment_name: str = "g10_gated_muon_rms_norm"
+    muon_rms_norm_grad: bool = True
+
+@dataclass
+class G10GatedMuonRowNormConfig(G10BaseConfig):
+    """Gated residual + row-normalize gradient before polar express."""
+    experiment_name: str = "g10_gated_muon_row_norm"
+    muon_row_norm: bool = True
+
+@dataclass
+class G10GatedMuonSignMix01Config(G10BaseConfig):
+    """Gated residual + 10% sign gradient mixing."""
+    experiment_name: str = "g10_gated_muon_sign_mix_01"
+    muon_sign_mix: float = 0.1
+
+@dataclass
+class G10GatedMuonHalfOrtho05Config(G10BaseConfig):
+    """Gated residual + 50% ortho blend."""
+    experiment_name: str = "g10_gated_muon_half_ortho_05"
+    muon_half_ortho: float = 0.5
+
+
+# ── D: Stack gated_residual with novel attention/positional mechanisms (8) ─
+
+@dataclass
+class G10GatedCosineAttnConfig(G10BaseConfig):
+    """Gated residual + cosine similarity attention."""
+    experiment_name: str = "g10_gated_cosine_attn"
+    cosine_attn: bool = True
+
+@dataclass
+class G10GatedAlibiConfig(G10BaseConfig):
+    """Gated residual + ALiBi positional encoding (no RoPE)."""
+    experiment_name: str = "g10_gated_alibi"
+    alibi: bool = True
+    use_rope: bool = False
+
+@dataclass
+class G10GatedQKLayerNormConfig(G10BaseConfig):
+    """Gated residual + QK LayerNorm. LayerNorm was an early winner never tested on this baseline."""
+    experiment_name: str = "g10_gated_qkln"
+    qk_norm_type: str = "layernorm"
+
+@dataclass
+class G10GatedBilinearEluRs035Config(G10BaseConfig):
+    """Gated residual + ELU bilinear + residual_scale=0.35. Three-way combo of winners."""
+    experiment_name: str = "g10_gated_bilinear_elu_rs035"
+    ffn_type: str = "bilinear_elu"
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GatedBilinearEluConfig(G10BaseConfig):
+    """Gated residual + ELU bilinear gate. ELU was neutral on Gen9; test again on new baseline."""
+    experiment_name: str = "g10_gated_bilinear_elu"
+    ffn_type: str = "bilinear_elu"
+
+@dataclass
+class G10GatedBilinearSoftplusConfig(G10BaseConfig):
+    """Gated residual + softplus bilinear gate."""
+    experiment_name: str = "g10_gated_bilinear_softplus"
+    ffn_type: str = "bilinear_softplus"
+
+@dataclass
+class G10GatedBilinearStarConfig(G10BaseConfig):
+    """Gated residual + StarReLU-like gate (x*σ(x)). Showed some promise in Gen9."""
+    experiment_name: str = "g10_gated_bilinear_star"
+    ffn_type: str = "bilinear_star"
+
+@dataclass
+class G10GatedPerChRs035Config(G10BaseConfig):
+    """Per-channel gate + residual_scale=0.35. Richer gating + tighter DeepNorm."""
+    experiment_name: str = "g10_gate_per_ch_rs035"
+    gate_per_channel: bool = True
+    residual_scale: float = 0.35
+
+
+# ── E: Novel mechanisms never tried (11 experiments) ─────────────────────
+
+@dataclass
+class G10GatedSandwichExtraConfig(G10BaseConfig):
+    """Gated residual + extra sandwich norm layers (double normalization per sub-layer).
+    Already using sandwich; test if additional norm positions help with gating."""
+    experiment_name: str = "g10_gated_bilinear_abs"
+    ffn_type: str = "bilinear_abs"
+
+@dataclass
+class G10GatedMuonCenterRs035Config(G10BaseConfig):
+    """Gated residual + grad centralization + rs=0.35. Three synergistic mechanisms."""
+    experiment_name: str = "g10_gated_center_rs035"
+    muon_grad_centralize: bool = True
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GatedMuonCautiousCenterConfig(G10BaseConfig):
+    """Gated residual + cautious + grad centralization — dual Muon corrections."""
+    experiment_name: str = "g10_gated_cautious_center"
+    muon_cautious: bool = True
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G10GatedMuonAdaptiveRs035Config(G10BaseConfig):
+    """Gated residual + adaptive NS + rs=0.35."""
+    experiment_name: str = "g10_gated_adaptive_rs035"
+    muon_adaptive_ns: bool = True
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GateHighRs035Config(G10BaseConfig):
+    """Gate init high (near-open) + rs=0.35. Start as normal residual, learn to gate down."""
+    experiment_name: str = "g10_gate_high_rs035"
+    gate_init: float = 2.0
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GateHighPerChConfig(G10BaseConfig):
+    """Gate init high + per-channel gate. Near-full residual at init, fine-grained gating."""
+    experiment_name: str = "g10_gate_high_per_ch"
+    gate_init: float = 2.0
+    gate_per_channel: bool = True
+
+@dataclass
+class G10GatedCosineQKLNConfig(G10BaseConfig):
+    """Gated residual + cosine attention + QK LayerNorm."""
+    experiment_name: str = "g10_gated_cosine_qkln"
+    cosine_attn: bool = True
+    qk_norm_type: str = "layernorm"
+
+@dataclass
+class G10GatedMuonPostMomRs035Config(G10BaseConfig):
+    """Gated residual + post-momentum Muon + rs=0.35."""
+    experiment_name: str = "g10_gated_post_mom_rs035"
+    muon_post_momentum: bool = True
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GatedMuonRowNormRs035Config(G10BaseConfig):
+    """Gated residual + row-norm Muon + rs=0.35."""
+    experiment_name: str = "g10_gated_row_norm_rs035"
+    muon_row_norm: bool = True
+    residual_scale: float = 0.35
+
+@dataclass
+class G10GatedBilinearEluQKLNConfig(G10BaseConfig):
+    """Gated residual + ELU bilinear + QK LayerNorm. Three distinct mechanisms."""
+    experiment_name: str = "g10_gated_elu_qkln"
+    ffn_type: str = "bilinear_elu"
+    qk_norm_type: str = "layernorm"
+
+@dataclass
+class G10GatedPerChCosineConfig(G10BaseConfig):
+    """Per-channel gate + cosine attention. Rich gating + normalized similarity."""
+    experiment_name: str = "g10_gate_per_ch_cosine"
+    gate_per_channel: bool = True
+    cosine_attn: bool = True
+
+
+# ── F: Exploitation of residual_035 winner (4 experiments) ──────────────
+# residual_scale=0.35 was a standalone winner — exploit it further.
+
+@dataclass
+class G10Rs035MuonGradCenterConfig(G10BaseConfig):
+    """Gated residual + rs=0.35 + grad centralization."""
+    experiment_name: str = "g10_rs035_center"
+    residual_scale: float = 0.35
+    muon_grad_centralize: bool = True
+
+@dataclass
+class G10Rs035MuonCautiousConfig(G10BaseConfig):
+    """Gated residual + rs=0.35 + cautious Muon."""
+    experiment_name: str = "g10_rs035_cautious"
+    residual_scale: float = 0.35
+    muon_cautious: bool = True
+
+@dataclass
+class G10Rs035BilinearStarConfig(G10BaseConfig):
+    """Gated residual + rs=0.35 + star bilinear gate."""
+    experiment_name: str = "g10_rs035_bilinear_star"
+    residual_scale: float = 0.35
+    ffn_type: str = "bilinear_star"
+
+@dataclass
+class G10Rs035QKLNConfig(G10BaseConfig):
+    """Gated residual + rs=0.35 + QK LayerNorm."""
+    experiment_name: str = "g10_rs035_qkln"
+    residual_scale: float = 0.35
+    qk_norm_type: str = "layernorm"
+
+
+# ── Gen10 Registry ────────────────────────────────────────────────────────
+ABLATION_CONFIGS["g9_gated_residual_baseline"]   = G9GatedResidualConfig
+# A: Residual scale stacking
+ABLATION_CONFIGS["g10_gated_rs035"]              = G10GatedRs035Config
+ABLATION_CONFIGS["g10_gated_rs040"]              = G10GatedRs040Config
+ABLATION_CONFIGS["g10_gated_rs060"]              = G10GatedRs060Config
+ABLATION_CONFIGS["g10_gated_rs100"]              = G10GatedRs100Config
+ABLATION_CONFIGS["g10_gated_rs025"]              = G10GatedRs025Config
+# B: Gate init variants
+ABLATION_CONFIGS["g10_gate_init_high"]           = G10GateInitHighConfig
+ABLATION_CONFIGS["g10_gate_init_low"]            = G10GateInitLowConfig
+ABLATION_CONFIGS["g10_gate_init_open"]           = G10GateInitOpenConfig
+ABLATION_CONFIGS["g10_gate_per_channel"]         = G10GatePerChannelConfig
+# C: Stack with Muon variants
+ABLATION_CONFIGS["g10_gated_muon_post_mom"]      = G10GatedMuonPostMomConfig
+ABLATION_CONFIGS["g10_gated_muon_grad_center"]   = G10GatedMuonGradCenterConfig
+ABLATION_CONFIGS["g10_gated_muon_cautious"]      = G10GatedMuonCautiousConfig
+ABLATION_CONFIGS["g10_gated_muon_double_ortho"]  = G10GatedMuonDoubleOrthoConfig
+ABLATION_CONFIGS["g10_gated_muon_adaptive_ns"]   = G10GatedMuonAdaptiveNsConfig
+ABLATION_CONFIGS["g10_gated_muon_warm_mom"]      = G10GatedMuonWarmMomConfig
+ABLATION_CONFIGS["g10_gated_muon_rms_norm"]      = G10GatedMuonRmsNormConfig
+ABLATION_CONFIGS["g10_gated_muon_row_norm"]      = G10GatedMuonRowNormConfig
+ABLATION_CONFIGS["g10_gated_muon_sign_mix_01"]   = G10GatedMuonSignMix01Config
+ABLATION_CONFIGS["g10_gated_muon_half_ortho_05"] = G10GatedMuonHalfOrtho05Config
+# D: Stack with attention/positional
+ABLATION_CONFIGS["g10_gated_cosine_attn"]        = G10GatedCosineAttnConfig
+ABLATION_CONFIGS["g10_gated_alibi"]              = G10GatedAlibiConfig
+ABLATION_CONFIGS["g10_gated_qkln"]              = G10GatedQKLayerNormConfig
+ABLATION_CONFIGS["g10_gated_bilinear_elu_rs035"] = G10GatedBilinearEluRs035Config
+ABLATION_CONFIGS["g10_gated_bilinear_elu"]       = G10GatedBilinearEluConfig
+ABLATION_CONFIGS["g10_gated_bilinear_softplus"]  = G10GatedBilinearSoftplusConfig
+ABLATION_CONFIGS["g10_gated_bilinear_star"]      = G10GatedBilinearStarConfig
+ABLATION_CONFIGS["g10_gate_per_ch_rs035"]        = G10GatedPerChRs035Config
+# E: Novel combos
+ABLATION_CONFIGS["g10_gated_bilinear_abs"]       = G10GatedSandwichExtraConfig
+ABLATION_CONFIGS["g10_gated_center_rs035"]       = G10GatedMuonCenterRs035Config
+ABLATION_CONFIGS["g10_gated_cautious_center"]    = G10GatedMuonCautiousCenterConfig
+ABLATION_CONFIGS["g10_gated_adaptive_rs035"]     = G10GatedMuonAdaptiveRs035Config
+ABLATION_CONFIGS["g10_gate_high_rs035"]          = G10GateHighRs035Config
+ABLATION_CONFIGS["g10_gate_high_per_ch"]         = G10GateHighPerChConfig
+ABLATION_CONFIGS["g10_gated_cosine_qkln"]        = G10GatedCosineQKLNConfig
+ABLATION_CONFIGS["g10_gated_post_mom_rs035"]     = G10GatedMuonPostMomRs035Config
+ABLATION_CONFIGS["g10_gated_row_norm_rs035"]     = G10GatedMuonRowNormRs035Config
+ABLATION_CONFIGS["g10_gated_elu_qkln"]           = G10GatedBilinearEluQKLNConfig
+ABLATION_CONFIGS["g10_gate_per_ch_cosine"]       = G10GatedPerChCosineConfig
+# F: Exploit rs=0.35
+ABLATION_CONFIGS["g10_rs035_center"]             = G10Rs035MuonGradCenterConfig
+ABLATION_CONFIGS["g10_rs035_cautious"]           = G10Rs035MuonCautiousConfig
+ABLATION_CONFIGS["g10_rs035_bilinear_star"]      = G10Rs035BilinearStarConfig
+ABLATION_CONFIGS["g10_rs035_qkln"]              = G10Rs035QKLNConfig
+
+# ── G: 8 more novel combos to hit 50 ──────────────────────────────────────
+
+@dataclass
+class G10GatedMuonUpdateClipConfig(G10BaseConfig):
+    """Gated residual + update clip. Clip ortho update norm for stability."""
+    experiment_name: str = "g10_gated_update_clip"
+    muon_update_clip: float = 1.0
+
+@dataclass
+class G10GatedMuonTrustRegionConfig(G10BaseConfig):
+    """Gated residual + trust region clipping (5% of param norm)."""
+    experiment_name: str = "g10_gated_trust_region"
+    muon_trust_region: float = 0.05
+
+@dataclass
+class G10Rs035GatedHighConfig(G10BaseConfig):
+    """rs=0.35 + gate init high (0.88). High-gate + tight residual scale."""
+    experiment_name: str = "g10_rs035_gate_high"
+    residual_scale: float = 0.35
+    gate_init: float = 2.0
+
+@dataclass
+class G10Rs035PerChConfig(G10BaseConfig):
+    """rs=0.35 + per-channel gate. Tightest residual + richest gating."""
+    experiment_name: str = "g10_rs035_per_ch"
+    residual_scale: float = 0.35
+    gate_per_channel: bool = True
+
+@dataclass
+class G10GatedMuonColNormConfig(G10BaseConfig):
+    """Gated residual + column-normalize gradient before polar express."""
+    experiment_name: str = "g10_gated_muon_col_norm"
+    muon_col_norm: bool = True
+
+@dataclass
+class G10GatedBilinearMishConfig(G10BaseConfig):
+    """Gated residual + Mish gate (x*tanh(softplus(x))). Non-monotonic gate."""
+    experiment_name: str = "g10_gated_bilinear_mish"
+    ffn_type: str = "bilinear_mish"
+
+@dataclass
+class G10GatedBilinearSqSiluConfig(G10BaseConfig):
+    """Gated residual + squared SiLU gate. Always-positive, sharper gate."""
+    experiment_name: str = "g10_gated_bilinear_sq_silu"
+    ffn_type: str = "bilinear_sq_silu"
+
+@dataclass
+class G10GatedBilinearEluPerChConfig(G10BaseConfig):
+    """ELU bilinear + per-channel gate + gated residual. Three novel mechanisms."""
+    experiment_name: str = "g10_gated_elu_per_ch"
+    ffn_type: str = "bilinear_elu"
+    gate_per_channel: bool = True
+
+ABLATION_CONFIGS["g10_gated_update_clip"]        = G10GatedMuonUpdateClipConfig
+ABLATION_CONFIGS["g10_gated_trust_region"]       = G10GatedMuonTrustRegionConfig
+ABLATION_CONFIGS["g10_rs035_gate_high"]          = G10Rs035GatedHighConfig
+ABLATION_CONFIGS["g10_rs035_per_ch"]             = G10Rs035PerChConfig
+ABLATION_CONFIGS["g10_gated_muon_col_norm"]      = G10GatedMuonColNormConfig
+ABLATION_CONFIGS["g10_gated_bilinear_mish"]      = G10GatedBilinearMishConfig
+ABLATION_CONFIGS["g10_gated_bilinear_sq_silu"]   = G10GatedBilinearSqSiluConfig
+ABLATION_CONFIGS["g10_gated_elu_per_ch"]         = G10GatedBilinearEluPerChConfig
+
+
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
     if name not in ABLATION_CONFIGS:
         raise ValueError(

@@ -72,10 +72,28 @@ def setup_muon_optimizer_ablation(model, config):
     print(f"  Muon polar express steps: {ns_steps}")
 
     muon_optimizer = Muon(
-        muon_params, 
-        lr=config.muon_lr, 
+        muon_params,
+        lr=config.muon_lr,
         momentum=config.muon_momentum,
         ns_steps=ns_steps,
+        # Gen9 novel Muon variant flags (all default False/0.0 in BaselineConfig)
+        post_momentum       = getattr(config, 'muon_post_momentum', False),
+        grad_centralize     = getattr(config, 'muon_grad_centralize', False),
+        half_ortho          = getattr(config, 'muon_half_ortho', 0.0),
+        cautious            = getattr(config, 'muon_cautious', False),
+        frob_scale          = getattr(config, 'muon_frob_scale', False),
+        double_ortho        = getattr(config, 'muon_double_ortho', False),
+        sign_mix            = getattr(config, 'muon_sign_mix', 0.0),
+        row_norm            = getattr(config, 'muon_row_norm', False),
+        col_norm            = getattr(config, 'muon_col_norm', False),
+        ema_ortho           = getattr(config, 'muon_ema_ortho', False),
+        adaptive_ns         = getattr(config, 'muon_adaptive_ns', False),
+        trust_region        = getattr(config, 'muon_trust_region', 0.0),
+        update_clip         = getattr(config, 'muon_update_clip', 0.0),
+        stochastic_ortho    = getattr(config, 'muon_stochastic_ortho', 0.0),
+        warm_momentum       = getattr(config, 'muon_warm_momentum', False),
+        warm_momentum_steps = getattr(config, 'muon_warm_momentum_steps', 100),
+        rms_norm_grad       = getattr(config, 'muon_rms_norm_grad', False),
     )
     adamw_optimizer = torch.optim.AdamW(
         adamw_params,

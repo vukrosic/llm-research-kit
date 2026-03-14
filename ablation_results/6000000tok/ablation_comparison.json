@@ -1,4 +1,121 @@
 {
-  "summary": [],
-  "all_results": []
+  "summary": [
+    {
+      "experiment": "g9_muon_warm_mom",
+      "val_loss": 4.848797426223755,
+      "val_accuracy": 0.2464527357107963,
+      "val_perplexity": 127.5868649340514,
+      "training_time_min": 1.329257865746816
+    }
+  ],
+  "all_results": [
+    {
+      "experiment_name": "g9_muon_warm_mom",
+      "ablation_flags": {
+        "use_embed_scale": true,
+        "use_qk_norm": true,
+        "muon_ns_steps": 5,
+        "norm_type": "rmsnorm",
+        "norm_position": "sandwich",
+        "final_norm_type": "rmsnorm",
+        "ffn_type": "bilinear",
+        "activation_type": "squared_relu",
+        "d_ff": 2048,
+        "n_kv_heads": 4,
+        "use_rope": true,
+        "rope_base": 10000.0,
+        "use_bias": true,
+        "parallel_block": false,
+        "residual_scale": 0.5,
+        "n_layers": 22,
+        "d_model": 512,
+        "n_heads": 8,
+        "use_learned_pos": false,
+        "tie_weights": true,
+        "init_scheme": "default",
+        "muon_lr": 0.018,
+        "adamw_lr": 0.006,
+        "muon_momentum": 0.95,
+        "weight_decay": 0.2,
+        "grad_clip": 1.0,
+        "dropout": 0.0,
+        "schedule_type": "linear",
+        "warmup_ratio": 0.02,
+        "label_smoothing": 0.0,
+        "z_loss_weight": 0.0,
+        "stochastic_depth": 0.0,
+        "value_norm": false,
+        "layer_scale_init": null
+      },
+      "final_metrics": {
+        "val_loss": 4.848797426223755,
+        "val_accuracy": 0.2464527357107963,
+        "val_perplexity": 127.5868649340514,
+        "train_loss": 4.815680027008057
+      },
+      "setup_time_seconds": 7.258487224578857,
+      "active_training_time_seconds": 79.75547194480896,
+      "total_wall_time_seconds": 87.01395916938782,
+      "total_time_minutes": 1.4502326528231302,
+      "actual_steps": 367,
+      "tokens_seen": 6012928,
+      "train_tokens": 6000000,
+      "history": {
+        "steps": [
+          0,
+          50,
+          100,
+          150,
+          200,
+          300,
+          367
+        ],
+        "val_losses": [
+          10.883703908920289,
+          6.609027419090271,
+          6.069961276054382,
+          5.5917486524581905,
+          5.3159237241745,
+          4.976330733299255,
+          4.848797426223755
+        ],
+        "val_accuracies": [
+          0.0005361504640937958,
+          0.14359733756717147,
+          0.1698827552515877,
+          0.19815034196384954,
+          0.21537127503663897,
+          0.23652357107962874,
+          0.2464527357107963
+        ],
+        "val_perplexities": [
+          53300.655528277704,
+          741.7612449554065,
+          432.6639267957007,
+          268.20420584094336,
+          203.55245263462908,
+          144.9415754510125,
+          127.5868649340514
+        ],
+        "elapsed_times": [
+          0.17645374536514283,
+          0.3445046941439311,
+          0.5125885049502055,
+          0.6806230187416077,
+          0.8486666282018026,
+          1.1263513644536336,
+          1.3292563517888387
+        ],
+        "learning_rates": [
+          0.0025714285714285713,
+          0.015793871866295262,
+          0.013286908077994427,
+          0.010779944289693593,
+          0.008272980501392758,
+          0.0032590529247910867,
+          0.0018
+        ]
+      }
+    }
+  ]
 }
