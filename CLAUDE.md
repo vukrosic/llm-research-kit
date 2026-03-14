@@ -203,6 +203,8 @@ After completing a batch of experiments:
 
 ## 11. Environment Setup
 
+curl -fsSL https://claude.ai/install.sh | bash
+
 export PATH="$PATH:/root/.local/bin" && echo 'export PATH="$PATH:/root/.local/bin"' >> ~/.bashrc
 
 
