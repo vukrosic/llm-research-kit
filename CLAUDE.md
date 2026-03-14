@@ -104,14 +104,68 @@ Each experiment must change **exactly one or two** things from the current best 
 ### Minimum batch size
 **Every batch must contain at least 50 experiments.** Fewer than 20 is not enough to meaningfully cover the exploration/exploitation space. All experiments in a batch must be based on the current best config (lowest val_loss on the leaderboard) — never design a batch off a stale baseline.
 
-### Banned experiment types — do not design these
-The following are too basic and uninformative relative to the cost of running them:
-- **LR sweeps**: do not sweep muon_lr, adamw_lr, or warmup_ratio in isolation — these are pure hyperparameter tuning, not architecture research
-- **Weight decay / momentum / grad_clip sweeps** — same reason
-- **Model size changes** (n_layers, d_model, n_heads, d_ff) — we are doing architecture research, not scaling studies; avoid unless there is a specific structural hypothesis being tested
-- **Trivial regularization sweeps** (dropout, label_smoothing, stochastic_depth grid search) — only queue these if there is a specific mechanistic reason, not just "try it"
+### Banned experiment types — absolutely forbidden, do not design these ever
 
-Instead, bias toward: novel attention mechanisms, new FFN gating variants, positional encoding alternatives, init schemes, normalization positions and types, attention activation functions, structural combinations that haven't been tried together.
+**Hyperparameter sweeps (never):**
+- muon_lr, adamw_lr, warmup_ratio in isolation
+- weight_decay, muon_momentum, grad_clip in isolation
+- muon_ns_steps in isolation
+
+**Attention variants (exhausted — do not revisit):**
+- GQA / MQA / MHA head count changes (n_kv_heads=1,2,4,8 — all tried)
+- RoPE base changes (50k, 200k, 500k, 1M — all tried)
+- Local windowed attention (window_size=32,64,128 — all tried)
+- Attention scale (attn_scale) — OOM in current implementation
+- Attention softcap (attn_softcap) — OOM in current implementation
+- ReLU attention (attn_activation=relu) — OOM in current implementation
+- Parallel block / PaLM-style — tried, big loser
+- Value norm (value_norm=True) — tried alone and with bias, loser
+- No QK norm — tried, catastrophic loser
+- Q-norm only (asymmetric QK) — tried, loser
+- No positional encoding — NaN, training diverges
+- Learned absolute positional embeddings — tried, loser
+
+**FFN variants (exhausted):**
+- FFN width changes (d_ff=1536, 2560, 3072) — tried
+- SwiGLU — tried multiple times across baselines
+- GLU — tried
+- Gated squared-ReLU — tried, loser
+- Bilinear gate activation: silu, tanh, gelu, relu — all tried
+- Standard FFN (ffn_type=standard) — original baseline
+
+**Normalization (exhausted):**
+- norm_type=layernorm — tried
+- norm_position=post — catastrophic loser
+- norm_position=pre — tried, loser
+- final_norm_type=none — tried, catastrophic loser
+- final_norm_type=layernorm — tried
+- No QK norm — catastrophic loser
+- Layer scale sweeps (layer_scale_init=1e-4, 0.01, 0.1) — tried
+
+**Init schemes (exhausted):**
+- depth_scaled — tried alone and with layer_scale, loser
+- gpt2 — tried, loser
+- small_embed — tried
+
+**Regularization (exhausted as standalone):**
+- stochastic_depth=0.05, 0.10 — tried
+- label_smoothing=0.05 — tried
+- dropout=0.05 — tried
+- z_loss_weight=1e-4, 1e-3 — tried
+- use_embed_scale=False — tried
+
+**Structural (exhausted):**
+- tie_weights=False — catastrophic loser
+- use_bias toggle — tried (use_bias=True is now the baseline)
+- parallel_block — big loser
+- post-norm — catastrophic loser
+
+**Model size (never):**
+- n_layers, d_model, n_heads changes — scaling study, not architecture research
+
+**Rule:** If a category appears on this list, do not queue any experiment that is *only* that change. You may still combine a banned individual change with 1-2 genuinely novel untested mechanisms, if the combination has a specific mechanistic hypothesis that hasn't been tested.
+
+Instead, find completely new mechanisms: novel attention patterns, new data-flow topologies, new gating functions, ideas from recent papers in `research/inbox/`, or structural combinations with a clear hypothesis.
 
 ### Do not re-run failed experiments unless the base architecture has changed significantly.
 
@@ -135,7 +189,7 @@ When files exist in `research/inbox/`:
 After every batch of experiments, update `experiments/leaderboard.md`:
 - Keep a **historical progression** of all records — each row is a previous best that was beaten
 - Include: exp_id, val_loss, Δ vs previous record, % improvement vs previous record, one-sentence key change description
-- **Δ and % improvement are always relative to the immediately preceding leaderboard entry** (the previous record at the time that experiment ran), never relative to the original baseline
+- **Δ and % improvement are ALWAYS relative to the immediately preceding leaderboard entry — NEVER to the original baseline or any other reference point**
 
 **Always note the active baseline** at the top of the leaderboard. If a new winner is found, it becomes the new baseline for subsequent experiments.
 
@@ -212,6 +266,29 @@ After completing a batch of experiments:
    - What this batch tested
    - What was learned
    - What the next batch should focus on
+
+---
+
+## 12. Never Stop — Continuous Improvement Loop
+
+**This process runs indefinitely. Never stop. Never wait for the user to ask.**
+
+After every batch completes:
+1. Immediately update the leaderboard and queue
+2. Immediately design the next batch of 50 experiments
+3. Immediately launch training
+4. Repeat forever
+
+### Novelty requirement
+At least **half** of every batch must be experiments that have not been tried in any form before — new mechanisms, new combinations, new structural ideas. Do not recycle the same axes batch after batch. If you've already swept RoPE base in a prior batch, don't sweep it again unless combining it with something new.
+
+### What "novel" means
+Novel experiments are those that test a *mechanism* not previously evaluated on the current baseline — not just a different value of an already-explored knob. Good sources:
+- Structural changes (new attention pattern, new norm position, new gating)
+- Combinations of two mechanisms that individually failed but might interact positively
+- Ideas from `research/hypotheses.md` not yet tested on the current baseline
+- Completely untried config flags
+- Surprising combos (e.g., mechanisms that big labs don't use together)
 ---
 
 ## 11. Environment Setup
