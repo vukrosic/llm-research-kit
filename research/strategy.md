@@ -4,6 +4,51 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-14 — Gen11 results: new baseline gen11_x_singlu (4.8012)
+
+### What this batch tested
+50 experiments on `muon_warm_row_rms` baseline (4.8109). Exploitation (35): gated_residual stacking, grad_centralize, bilinear_elu, residual_scale sweep, trust_region, double_ortho, warm_momentum tuning, and two-way combos. Exploration (15): col_norm, sign_mix, stoch_ortho, half_ortho, scispace FFNs (singlu/tanhglu/laplaceglu/tripleprojglu), cosine_attn, HiLo attention.
+
+### Results: 8 winners, 8 neutral, 28 losers, 6 failed
+| exp_id | val_loss | Δ | key change |
+|--------|----------|---|------------|
+| gen11_x_singlu | 4.8012 | +0.0097 | scispace_singlu FFN (sin-gated!) — EXPLORATION WIN |
+| gen11_rs030 | 4.8034 | +0.0075 | residual_scale=0.30 |
+| gen11_rs045 | 4.8057 | +0.0052 | residual_scale=0.45 |
+| gen11_trust_rs035 | 4.8062 | +0.0047 | trust_region + residual_scale=0.35 |
+| gen11_rs035 | 4.8067 | +0.0042 | residual_scale=0.35 |
+| gen11_warm_200 | 4.8068 | +0.0041 | warm_momentum_steps=200 |
+| gen11_elu_rs035 | 4.8075 | +0.0034 | bilinear_elu + residual_scale=0.35 |
+| gen11_trust | 4.8077 | +0.0032 | trust_region alone |
+
+### Key findings
+- **SinGLU is the new champion.** `scispace_singlu` (sin(Wx)*Vx) beat all 35 exploitation experiments. Periodic activation provides fundamentally different representation capacity than monotonic gates. This was pure exploration.
+- **Residual scale 0.30 is the optimal static scale.** 0.30 > 0.35 > 0.45 > 0.40 > 0.50 (current) > 0.60. The trend is clear: tighter DeepNorm helps, with 0.30 as the sweet spot.
+- **Gated residual is a CONSISTENT LOSER on this baseline.** Every single gated_residual combo was negative (-0.28% to -0.82%). It was a gen9 winner but conflicts with the row+rms Muon improvements. Add to banned list for this baseline.
+- **warm_momentum_steps=200 > 100 > 50.** Longer warm ramp is better. 50 was catastrophic (-0.54%).
+- **grad_centralize was neutral** (+0.0% alone). Disappointing given it was #2 in the previous batch — the improvement was likely from row_norm, not grad_center itself.
+- **tanhglu was neutral** — another scispace FFN, not as special as singlu.
+- **sign_mix is catastrophic** (-15% to -16%). **half_ortho is a big loser** (-1% to -2%). **laplaceglu big loser** (-3.4%).
+- **post_momentum crashed** (dtype bug). **cosine_attn and hilo_050 OOM.**
+- **hilo_025 is anomalous** (val_loss 0.007, 99.9% accuracy) — broken eval, exclude like attn_pool.
+
+### Failures and anomalies
+- `gen11_post_mom*` (4 experiments): dtype bug in muon_post_momentum implementation
+- `gen11_x_cosine_attn`, `gen11_x_hilo_050`: CUDA OOM
+- `gen11_x_hilo_025`: anomalous val_loss 0.007 — broken eval, exclude
+
+### New baseline: gen11_x_singlu (4.8012)
+Flags: all of muon_warm_row_rms baseline + `ffn_type=scispace_singlu` instead of `ffn_type=bilinear`
+
+### What the next batch should focus on
+- **Exploit singlu aggressively:** singlu + rs030, singlu + trust_region, singlu + warm_200
+- **Explore more scispace FFNs:** only 4 were tested out of 20+ variants. Try eluglu, hardswishglu, sigmoidglu, pregateglu, etc.
+- **Residual scale on singlu baseline:** is 0.30 still optimal with singlu?
+- **Fix post_momentum dtype bug** and re-test — it was untested
+- **Ban gated_residual** on current baseline direction
+
+---
+
 ## 2026-03-14 — Gen10 queue batch results: new baseline muon_warm_row_rms (4.8109)
 
 ### What this batch tested

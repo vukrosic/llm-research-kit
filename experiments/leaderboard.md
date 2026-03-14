@@ -1,11 +1,12 @@
 # Leaderboard
 
-**Current best / active baseline**: `muon_warm_row_rms` — val_loss **4.8109**
+**Current best / active baseline**: `gen11_x_singlu` — val_loss **4.8012**
 **Original baseline**: `baseline` — val_loss **5.0611**
 *Last updated: 2026-03-14*
 
 | # | exp_id | val_loss | Δ vs previous record | % improvement | Key change |
 |---|--------|----------|-----------------------|---------------|------------|
+| 13 | `gen11_x_singlu` | 4.8012 | +0.0097 | +0.20% | `ffn_type=scispace_singlu` — sine-gated linear unit (sin(Wx) * Vx) replaces bilinear FFN. Periodic gating creates oscillating activation that outperforms monotonic gates. Exploration experiment — completely novel FFN architecture. |
 | 12 | `muon_warm_row_rms` | 4.8109 | +0.0379 | +0.78% | `muon_row_norm=True` + `muon_rms_norm_grad=True` on warm-momentum baseline — row-normalize then RMS-normalize gradients before Muon orthogonalization. Dual normalization removes both per-neuron magnitude and global scale, making ortho purely directional. |
 | 11 | `g9_muon_warm_mom` | 4.8488 | +0.0125 | +0.26% | `muon_warm_momentum=True` — ramp Muon momentum from 0.5→0.95 over first 100 steps. Early training uses lower momentum for more responsive updates, then ramps to full momentum. |
 | 10 | `g9_muon_row_norm` | 4.8613 | +0.0189 | +0.39% | `muon_row_norm=True` — L2-normalize each row of gradient before polar express orthogonalization. Removes per-neuron magnitude, making ortho purely directional. |

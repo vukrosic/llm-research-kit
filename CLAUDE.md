@@ -166,6 +166,12 @@ Each experiment must change **exactly one or two** things from the current best 
 - muon_ema_ortho — big loser (-5% to -6%)
 - muon_update_clip — catastrophic loser (-12% to -13%)
 - muon_frob_scale — catastrophic loser (-19%)
+- muon_sign_mix — catastrophic loser (-15% to -16%)
+- muon_half_ortho — big loser (-1% to -2.3%)
+- muon_col_norm — loser (-0.2% to -0.7%)
+- muon_post_momentum — crashes with dtype bug (unimplemented correctly)
+- muon_double_ortho — loser on row+rms baseline (-0.06%)
+- gated_residual — consistent loser on row+rms baseline (-0.28% to -0.82% across 8 combos). Was a gen9 winner but conflicts with current Muon improvements.
 
 **Structural (exhausted):**
 - tie_weights=False — catastrophic loser
@@ -223,6 +229,9 @@ All `g2_*` experiments in `ablation_results/6000000tok/` ran with identical conf
 
 ### attn_pool_k4 and attn_pool_k8 anomalies
 Invalid — K-pooling reduces effective sequence length making perplexity appear artificially low. Excluded.
+
+### gen11_x_hilo_025 anomaly
+val_loss 0.007 with 99.9% accuracy — broken eval (memorization or metric corruption from HiLo attention). Excluded.
 
 ### CRASH.log with "Permission denied"
 Many experiments have a `CRASH.log` file containing `[Errno 13] Permission denied`. This is a **post-training file save error**, not a training failure. Check `metrics.json` — if `tokens_seen` equals the target (e.g. 6012928 for 6M token runs) and `final_metrics` contains valid val_loss, the results are valid. Do not discard or re-run these experiments.
