@@ -4,6 +4,20 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-13 (update) — Gen3 partial results: two new winners
+
+### New findings
+- `new_bilinear` (val_loss **5.0052**) — new #1, beats `attn_qk_layernorm` by 0.0254 (+0.50%)
+- `new_deepnorm_07` (val_loss **5.0066**) — new #2, bilinear and deepnorm are orthogonal wins
+
+### Active baseline is now `new_bilinear` (5.0052)
+Key: `qk_norm_type=layernorm` + `ffn_type=bilinear` on top of sandwich+swiglu baseline
+
+### Next: run remaining 10 Gen3 experiments
+Priority watch: `combo_deepnorm_bilinear` (stacks both winners), `deepnorm_sweep_*` (is 0.5 < 0.707?), `new_ffn_wide` (more bilinear capacity)
+
+---
+
 ## 2026-03-13 — Baseline established, winner-based queue built
 
 ### Current state

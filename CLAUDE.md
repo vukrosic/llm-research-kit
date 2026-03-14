@@ -161,6 +161,9 @@ After completing a batch of experiments:
 
 ## 11. Environment Setup
 
+export PATH="$PATH:/root/.local/bin" && echo 'export PATH="$PATH:/root/.local/bin"' >> ~/.bashrc
+
+
 To run Claude with dangerous permissions (required for some scripts) in this environment:
 ```bash
 IS_SANDBOX=1 claude --dangerously-skip-permissions
