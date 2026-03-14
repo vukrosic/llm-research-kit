@@ -101,6 +101,18 @@ e.g.: attn_rope_scaled, ffn_bilinear_wide, opt_muon_lr_0.018, norm_rms_gate
 ### Minimum viable experiment
 Each experiment must change **exactly one or two** things from the current best config. If you're testing more than two changes at once, split it into separate experiments (this is ablation research, not kitchen-sink).
 
+### Minimum batch size
+**Every batch must contain at least 20 experiments.** Fewer than 20 is not enough to meaningfully cover the exploration/exploitation space. All experiments in a batch must be based on the current best config (lowest val_loss on the leaderboard) — never design a batch off a stale baseline.
+
+### Banned experiment types — do not design these
+The following are too basic and uninformative relative to the cost of running them:
+- **LR sweeps**: do not sweep muon_lr, adamw_lr, or warmup_ratio in isolation — these are pure hyperparameter tuning, not architecture research
+- **Weight decay / momentum / grad_clip sweeps** — same reason
+- **Model size changes** (n_layers, d_model, n_heads, d_ff) — we are doing architecture research, not scaling studies; avoid unless there is a specific structural hypothesis being tested
+- **Trivial regularization sweeps** (dropout, label_smoothing, stochastic_depth grid search) — only queue these if there is a specific mechanistic reason, not just "try it"
+
+Instead, bias toward: novel attention mechanisms, new FFN gating variants, positional encoding alternatives, init schemes, normalization positions and types, attention activation functions, structural combinations that haven't been tried together.
+
 ### Do not re-run failed experiments unless the base architecture has changed significantly.
 
 ---

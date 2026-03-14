@@ -1520,6 +1520,356 @@ ABLATION_CONFIGS["opt_z_loss"]                 = OptZLossConfig
 ABLATION_CONFIGS["norm_pre_linear"]            = NormPreLinearConfig
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 6 — experiments on top of opt_linear_residual_stack baseline
+#  Base: bilinear FFN + residual_scale=0.5 + linear schedule + warmup=0.02
+# ══════════════════════════════════════════════════════════════════════════
+
+# --- Muon LR sweep ---
+@dataclass
+class G6MuonLr015Config(OptLinearResidualStackConfig):
+    """Muon LR=0.015 — push lower than 0.020 winner."""
+    experiment_name: str = "g6_muon_lr_015"
+    muon_lr: float = 0.015
+
+@dataclass
+class G6MuonLr018Config(OptLinearResidualStackConfig):
+    """Muon LR=0.018 — 10M winner per hypotheses.md, untested on new baseline."""
+    experiment_name: str = "g6_muon_lr_018"
+    muon_lr: float = 0.018
+
+@dataclass
+class G6MuonLr020Config(OptLinearResidualStackConfig):
+    """Muon LR=0.020 — was winner in Gen5 on prior baseline; re-test here."""
+    experiment_name: str = "g6_muon_lr_020"
+    muon_lr: float = 0.020
+
+@dataclass
+class G6MuonLr028Config(OptLinearResidualStackConfig):
+    """Muon LR=0.028 — sweep above current 0.024."""
+    experiment_name: str = "g6_muon_lr_028"
+    muon_lr: float = 0.028
+
+# --- Warmup sweep ---
+@dataclass
+class G6Warmup00Config(OptLinearResidualStackConfig):
+    """No warmup with linear decay — test if any warmup is needed."""
+    experiment_name: str = "g6_warmup_00"
+    warmup_ratio: float = 0.0
+
+@dataclass
+class G6Warmup01Config(OptLinearResidualStackConfig):
+    """Warmup=1% on new residual_scale=0.5 baseline — re-test since base changed."""
+    experiment_name: str = "g6_warmup_01"
+    warmup_ratio: float = 0.01
+
+@dataclass
+class G6Warmup015Config(OptLinearResidualStackConfig):
+    """Warmup=1.5% — fine-grained sweep between winning 1% and current 2%."""
+    experiment_name: str = "g6_warmup_015"
+    warmup_ratio: float = 0.015
+
+# --- Residual scale sweep ---
+@dataclass
+class G6Residual04Config(OptLinearResidualStackConfig):
+    """Residual scale=0.4 — between 0.5 winner and 0.707."""
+    experiment_name: str = "g6_residual_04"
+    residual_scale: float = 0.4
+
+@dataclass
+class G6Residual03Config(OptLinearResidualStackConfig):
+    """Residual scale=0.3 — push tighter than 0.5 winner."""
+    experiment_name: str = "g6_residual_03"
+    residual_scale: float = 0.3
+
+# --- Weight decay sweep ---
+@dataclass
+class G6WD01Config(OptLinearResidualStackConfig):
+    """Weight decay=0.1 — less regularization than current 0.2."""
+    experiment_name: str = "g6_wd_01"
+    weight_decay: float = 0.1
+
+@dataclass
+class G6WD03Config(OptLinearResidualStackConfig):
+    """Weight decay=0.3 — more regularization than current 0.2."""
+    experiment_name: str = "g6_wd_03"
+    weight_decay: float = 0.3
+
+# --- AdamW LR ---
+@dataclass
+class G6AdamwLr003Config(OptLinearResidualStackConfig):
+    """AdamW LR=0.003 — halve the embedding/bias LR."""
+    experiment_name: str = "g6_adamw_003"
+    adamw_lr: float = 0.003
+
+# --- Muon momentum ---
+@dataclass
+class G6Momentum098Config(OptLinearResidualStackConfig):
+    """Muon momentum=0.98 — higher momentum for smoother updates."""
+    experiment_name: str = "g6_momentum_098"
+    muon_momentum: float = 0.98
+
+# --- FFN width ---
+@dataclass
+class G6DFF1536Config(OptLinearResidualStackConfig):
+    """d_ff=1536 (3x d_model) — narrower bilinear FFN."""
+    experiment_name: str = "g6_dff_1536"
+    d_ff: int = 1536
+
+@dataclass
+class G6DFF2560Config(OptLinearResidualStackConfig):
+    """d_ff=2560 (5x d_model) — slightly wider bilinear FFN."""
+    experiment_name: str = "g6_dff_2560"
+    d_ff: int = 2560
+
+# --- Exploration ---
+@dataclass
+class G6LayerScale001Config(OptLinearResidualStackConfig):
+    """Layer scale init=0.01 (CaiT-style) — small scalar on residual branch."""
+    experiment_name: str = "g6_layer_scale_001"
+    layer_scale_init: float = 0.01
+
+@dataclass
+class G6LayerScale01Config(OptLinearResidualStackConfig):
+    """Layer scale init=0.1 — larger layer scale init."""
+    experiment_name: str = "g6_layer_scale_01"
+    layer_scale_init: float = 0.1
+
+@dataclass
+class G6StochDepth005Config(OptLinearResidualStackConfig):
+    """Stochastic depth=0.05 — light drop-path regularization."""
+    experiment_name: str = "g6_sdepth_005"
+    stochastic_depth: float = 0.05
+
+@dataclass
+class G6StochDepth010Config(OptLinearResidualStackConfig):
+    """Stochastic depth=0.10 — heavier drop-path regularization."""
+    experiment_name: str = "g6_sdepth_010"
+    stochastic_depth: float = 0.10
+
+@dataclass
+class G6LabelSmooth005Config(OptLinearResidualStackConfig):
+    """Label smoothing=0.05 — soft targets for better generalization."""
+    experiment_name: str = "g6_label_smooth_005"
+    label_smoothing: float = 0.05
+
+@dataclass
+class G6RopeBase100kConfig(OptLinearResidualStackConfig):
+    """RoPE base=100000 — scaled positional encoding for better generalization."""
+    experiment_name: str = "g6_rope_100k"
+    rope_base: float = 100000.0
+
+@dataclass
+class G6MuonNS8Config(OptLinearResidualStackConfig):
+    """muon_ns_steps=8 — more Newton-Schulz steps for a better preconditioner."""
+    experiment_name: str = "g6_muon_ns8"
+    muon_ns_steps: int = 8
+
+# Register Gen6 configs
+ABLATION_CONFIGS["g6_muon_lr_015"]        = G6MuonLr015Config
+ABLATION_CONFIGS["g6_muon_lr_018"]        = G6MuonLr018Config
+ABLATION_CONFIGS["g6_muon_lr_020"]        = G6MuonLr020Config
+ABLATION_CONFIGS["g6_muon_lr_028"]        = G6MuonLr028Config
+ABLATION_CONFIGS["g6_warmup_00"]          = G6Warmup00Config
+ABLATION_CONFIGS["g6_warmup_01"]          = G6Warmup01Config
+ABLATION_CONFIGS["g6_warmup_015"]         = G6Warmup015Config
+ABLATION_CONFIGS["g6_residual_04"]        = G6Residual04Config
+ABLATION_CONFIGS["g6_residual_03"]        = G6Residual03Config
+ABLATION_CONFIGS["g6_wd_01"]              = G6WD01Config
+ABLATION_CONFIGS["g6_wd_03"]             = G6WD03Config
+ABLATION_CONFIGS["g6_adamw_003"]          = G6AdamwLr003Config
+ABLATION_CONFIGS["g6_momentum_098"]       = G6Momentum098Config
+ABLATION_CONFIGS["g6_dff_1536"]           = G6DFF1536Config
+ABLATION_CONFIGS["g6_dff_2560"]           = G6DFF2560Config
+ABLATION_CONFIGS["g6_layer_scale_001"]    = G6LayerScale001Config
+ABLATION_CONFIGS["g6_layer_scale_01"]     = G6LayerScale01Config
+ABLATION_CONFIGS["g6_sdepth_005"]         = G6StochDepth005Config
+ABLATION_CONFIGS["g6_sdepth_010"]         = G6StochDepth010Config
+ABLATION_CONFIGS["g6_label_smooth_005"]   = G6LabelSmooth005Config
+ABLATION_CONFIGS["g6_rope_100k"]          = G6RopeBase100kConfig
+ABLATION_CONFIGS["g6_muon_ns8"]           = G6MuonNS8Config
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 7 — experiments on top of g6_muon_lr_018 baseline
+#  Base: bilinear FFN + residual_scale=0.5 + linear schedule + warmup=0.02
+#        + muon_lr=0.018
+#  Focus: novel architecture mechanisms, not hyperparameter sweeps
+# ══════════════════════════════════════════════════════════════════════════
+
+# --- Attention structure ---
+@dataclass
+class G7ParallelBlockConfig(G6MuonLr018Config):
+    """PaLM-style parallel attn+FFN: both branches share the same input, outputs summed."""
+    experiment_name: str = "g7_parallel_block"
+    parallel_block: bool = True
+
+@dataclass
+class G7ReluAttnConfig(G6MuonLr018Config):
+    """ReLU attention instead of softmax — sparse, unnormalized attention patterns (ReluFormer)."""
+    experiment_name: str = "g7_relu_attn"
+    attn_activation: str = "relu"
+
+@dataclass
+class G7Softcap20Config(G6MuonLr018Config):
+    """Gemma2-style attention logit soft-cap at ±20 — prevents extreme attention concentration."""
+    experiment_name: str = "g7_softcap_20"
+    attn_softcap: float = 20.0
+
+@dataclass
+class G7Softcap10Config(G6MuonLr018Config):
+    """More aggressive soft-cap at ±10 — forces more uniform attention."""
+    experiment_name: str = "g7_softcap_10"
+    attn_softcap: float = 10.0
+
+@dataclass
+class G7ValueNormConfig(G6MuonLr018Config):
+    """Normalize V vectors before output projection — implicit regularization on aggregated info."""
+    experiment_name: str = "g7_value_norm"
+    value_norm: bool = True
+
+@dataclass
+class G7AttnScaleHalfConfig(G6MuonLr018Config):
+    """attn_scale=0.5 — significantly dampen attention logits, much more uniform attention."""
+    experiment_name: str = "g7_attn_scale_half"
+    attn_scale: float = 0.5
+
+@dataclass
+class G7AttnScale2Config(G6MuonLr018Config):
+    """attn_scale=2.0 — sharper, spikier attention; forces heads to specialize."""
+    experiment_name: str = "g7_attn_scale_2"
+    attn_scale: float = 2.0
+
+@dataclass
+class G7GQA2Config(G6MuonLr018Config):
+    """n_kv_heads=2 — more aggressive KV sharing than current 4; tests if fewer KV heads help."""
+    experiment_name: str = "g7_gqa_2"
+    n_kv_heads: int = 2
+
+# --- Positional encoding ---
+@dataclass
+class G7NoPosConfig(G6MuonLr018Config):
+    """No positional encoding at all — relies purely on causal masking for sequence order."""
+    experiment_name: str = "g7_no_pos"
+    use_rope: bool = False
+    use_learned_pos: bool = False
+
+@dataclass
+class G7LearnedPosConfig(G6MuonLr018Config):
+    """Learned absolute positional embeddings (GPT-2 style) instead of RoPE."""
+    experiment_name: str = "g7_learned_pos"
+    use_rope: bool = False
+    use_learned_pos: bool = True
+
+# --- FFN gating variants ---
+@dataclass
+class G7SwiGLUNewConfig(G6MuonLr018Config):
+    """SwiGLU on the full new baseline — never tested with linear schedule + muon_lr=0.018."""
+    experiment_name: str = "g7_swiglu_new"
+    ffn_type: str = "swiglu"
+
+@dataclass
+class G7GatedSqReluConfig(G6MuonLr018Config):
+    """Gated squared-ReLU FFN — different gating structure from bilinear."""
+    experiment_name: str = "g7_gated_sq_relu"
+    ffn_type: str = "gated_sq_relu"
+
+@dataclass
+class G7BilinearSiluConfig(G6MuonLr018Config):
+    """Bilinear FFN gate with SiLU activation — smooth, non-sparse gate vs squared_relu."""
+    experiment_name: str = "g7_bilinear_silu"
+    activation_type: str = "silu"
+
+@dataclass
+class G7BilinearTanhConfig(G6MuonLr018Config):
+    """Bilinear FFN gate with tanh — bounded, symmetric gate; very different saturation behavior."""
+    experiment_name: str = "g7_bilinear_tanh"
+    activation_type: str = "tanh"
+
+# --- Normalization ---
+@dataclass
+class G7NoQKNormConfig(G6MuonLr018Config):
+    """Remove QK norm entirely — test if it's still essential with DeepNorm + linear schedule."""
+    experiment_name: str = "g7_no_qk_norm"
+    use_qk_norm: bool = False
+
+@dataclass
+class G7QNormOnlyConfig(G6MuonLr018Config):
+    """Normalize only queries, not keys — asymmetric QK norm."""
+    experiment_name: str = "g7_q_norm_only"
+    use_k_norm: bool = False
+
+@dataclass
+class G7PostNormConfig(G6MuonLr018Config):
+    """Post-norm architecture — classic BERT/GPT gradient flow, very different from sandwich."""
+    experiment_name: str = "g7_post_norm"
+    norm_position: str = "post"
+
+@dataclass
+class G7FinalNormNoneConfig(G6MuonLr018Config):
+    """Remove the final norm before the LM head — bold, tests if it's doing useful work."""
+    experiment_name: str = "g7_final_norm_none"
+    final_norm_type: str = "none"
+
+# --- Init scheme ---
+@dataclass
+class G7DepthScaledInitConfig(G6MuonLr018Config):
+    """Depth-scaled init: weights ∝ 1/√depth — better conditioned gradients at every layer."""
+    experiment_name: str = "g7_depth_scaled_init"
+    init_scheme: str = "depth_scaled"
+
+@dataclass
+class G7GPT2InitConfig(G6MuonLr018Config):
+    """GPT-2 init scheme — residual projections scaled by 1/√(2*n_layers)."""
+    experiment_name: str = "g7_gpt2_init"
+    init_scheme: str = "gpt2"
+
+# --- Structural ---
+@dataclass
+class G7NoTieWeightsConfig(G6MuonLr018Config):
+    """Separate LM head from input embeddings — more capacity at the cost of parameters."""
+    experiment_name: str = "g7_no_tie_weights"
+    tie_weights: bool = False
+
+@dataclass
+class G7UseBiasConfig(G6MuonLr018Config):
+    """Add bias to all linear layers — very different inductive bias, rarely done in modern LLMs."""
+    experiment_name: str = "g7_use_bias"
+    use_bias: bool = True
+
+@dataclass
+class G7ValueNormParallelConfig(G6MuonLr018Config):
+    """Combine value_norm + parallel_block — two novel mechanisms tested together."""
+    experiment_name: str = "g7_value_norm_parallel"
+    value_norm: bool = True
+    parallel_block: bool = True
+
+# Register Gen7 configs
+ABLATION_CONFIGS["g7_parallel_block"]       = G7ParallelBlockConfig
+ABLATION_CONFIGS["g7_relu_attn"]            = G7ReluAttnConfig
+ABLATION_CONFIGS["g7_softcap_20"]           = G7Softcap20Config
+ABLATION_CONFIGS["g7_softcap_10"]           = G7Softcap10Config
+ABLATION_CONFIGS["g7_value_norm"]           = G7ValueNormConfig
+ABLATION_CONFIGS["g7_attn_scale_half"]      = G7AttnScaleHalfConfig
+ABLATION_CONFIGS["g7_attn_scale_2"]         = G7AttnScale2Config
+ABLATION_CONFIGS["g7_gqa_2"]               = G7GQA2Config
+ABLATION_CONFIGS["g7_no_pos"]               = G7NoPosConfig
+ABLATION_CONFIGS["g7_learned_pos"]          = G7LearnedPosConfig
+ABLATION_CONFIGS["g7_swiglu_new"]           = G7SwiGLUNewConfig
+ABLATION_CONFIGS["g7_gated_sq_relu"]        = G7GatedSqReluConfig
+ABLATION_CONFIGS["g7_bilinear_silu"]        = G7BilinearSiluConfig
+ABLATION_CONFIGS["g7_bilinear_tanh"]        = G7BilinearTanhConfig
+ABLATION_CONFIGS["g7_no_qk_norm"]           = G7NoQKNormConfig
+ABLATION_CONFIGS["g7_q_norm_only"]          = G7QNormOnlyConfig
+ABLATION_CONFIGS["g7_post_norm"]            = G7PostNormConfig
+ABLATION_CONFIGS["g7_final_norm_none"]      = G7FinalNormNoneConfig
+ABLATION_CONFIGS["g7_depth_scaled_init"]    = G7DepthScaledInitConfig
+ABLATION_CONFIGS["g7_gpt2_init"]            = G7GPT2InitConfig
+ABLATION_CONFIGS["g7_no_tie_weights"]       = G7NoTieWeightsConfig
+ABLATION_CONFIGS["g7_use_bias"]             = G7UseBiasConfig
+ABLATION_CONFIGS["g7_value_norm_parallel"]  = G7ValueNormParallelConfig
+
+
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
     if name not in ABLATION_CONFIGS:
         raise ValueError(
