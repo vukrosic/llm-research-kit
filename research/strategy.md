@@ -4,6 +4,45 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-14 — Gen10 queue batch results: new baseline muon_warm_row_rms (4.8109)
+
+### What this batch tested
+48 experiments run via `experiments/queue.json` on the `g9_muon_warm_mom` baseline (4.8488). Three axes:
+1. **Muon gradient preprocessing combos** — stacking row_norm, rms_norm, grad_centralize, trust_region, cautious, double_ortho, ema_ortho with warm momentum
+2. **FFN gate activations** — bilinear_elu/gaussian/softplus/cubic/mish/star/sqr/sq_silu with row_norm or gated_residual
+3. **Structural** — gated_residual variants (cautious, trust_region, update_clip, frob_scale), residual_scale=0.45, pos_q_rope_only
+
+### Results: 12 winners, 7 neutral, 29 losers
+| exp_id | val_loss | Δ | key change |
+|--------|----------|---|------------|
+| muon_warm_row_rms | 4.8109 | +0.0379 | row_norm + rms_norm_grad (dual normalization) |
+| muon_warm_row_grad_center | 4.8128 | +0.0360 | row_norm + grad_centralize |
+| muon_warm_row_trust | 4.8139 | +0.0349 | row_norm + trust_region |
+| muon_warm_row_double_ortho | 4.8149 | +0.0339 | row_norm + double_ortho |
+| ffn_elu_row_norm | 4.8167 | +0.0321 | bilinear_elu FFN + muon_row_norm |
+| muon_warm_row_norm | 4.8169 | +0.0319 | row_norm (standalone on warm_mom base) |
+
+### Key findings
+- **`muon_row_norm` is the dominant Muon improvement.** Every top-6 winner includes it. Row-normalizing gradients before polar express orthogonalization is the single most impactful Muon tweak.
+- **Stacking a second normalization on top of row_norm helps.** The top 4 are all `row_norm + X`. RMS norm, grad centralize, trust region, and double ortho all compound with row_norm.
+- **RMS-norm alone is weak, but row+rms is the best combo.** `muon_warm_rms_norm` was neutral (+0.04%), but combining it with row_norm yields the batch winner at +0.78%.
+- **ELU bilinear FFN + row_norm** (4.8167) beats plain row_norm (4.8169) — bilinear_elu continues to stack positively.
+- **Cautious Muon is a catastrophic loser** (-2.6% to -3.2% across all variants). Do not revisit.
+- **EMA ortho is a big loser** (-5% to -6%). Do not revisit.
+- **Update clip and frob scale are catastrophic** (-12% to -19%). Do not revisit.
+- **27 of 48 experiments had Permission Denied crashes** (post-training file save, not training failure). All completed 6M tokens. Results are valid.
+
+### New baseline: muon_warm_row_rms (4.8109)
+Flags: `muon_row_norm=True, muon_rms_norm_grad=True, muon_warm_momentum=True, muon_warm_momentum_steps=100` on top of the cumulative best config.
+
+### What the next batch should focus on
+- **Exploit row_norm + rms_norm_grad aggressively:** Try stacking with gated_residual, bilinear_elu, residual_scale=0.35, grad_centralize
+- **Three-way Muon combos:** row_norm + rms_norm + grad_center was not tested (only row+rms and row+center separately)
+- **FFN on new baseline:** bilinear_elu showed promise — re-test on this new baseline
+- **Structural exploration:** gate_per_channel, novel attention mechanisms on this stronger baseline
+
+---
+
 ## 2026-03-14 — Gen9 results: new baseline g9_gated_residual, Gen10 launched
 
 ### Gen9 Winners (vs g7_use_bias baseline 4.8948)
