@@ -121,10 +121,18 @@ When files exist in `research/inbox/`:
 ## 7. Leaderboard Maintenance
 
 After every batch of experiments, update `experiments/leaderboard.md`:
-- **Only 1 entry**: the current best experiment (new winner replaces old)
-- Include: exp_id, val_loss, delta vs baseline, pct improvement, key change
+- Keep a **historical progression** of all records — each row is a previous best that was beaten
+- Include: exp_id, val_loss, Δ vs previous record, % improvement vs previous record, one-sentence key change description
+- **Δ and % improvement are always relative to the immediately preceding leaderboard entry** (the previous record at the time that experiment ran), never relative to the original baseline
 
 **Always note the active baseline** at the top of the leaderboard. If a new winner is found, it becomes the new baseline for subsequent experiments.
+
+**CRITICAL: Always use the latest leaderboard record (lowest val_loss) as the baseline when designing new experiments.** All `flags_override` in queue entries must include all cumulative changes from the original baseline through to the current best, not just the new change being tested.
+
+### Leaderboard entry minimum requirements
+- An experiment may only enter the leaderboard if it improves val_loss by **more than 0.002** over the previous record (the noise threshold from Section 8)
+- **No negative improvements and no noise-level improvements** — if Δ ≤ 0.002, the experiment is a neutral or loser and does not get a leaderboard row
+- Experiments within 0.002 val_loss of the current record are considered ties and are not promoted
 
 ---
 
@@ -145,6 +153,40 @@ When running multiple experiments:
 - Update `status` in `queue.json` to `running` before launching
 - Update to `done` and append to `history.json` after completion
 - Never assign the same GPU to two experiments simultaneously
+
+### GPU consistency rule
+**All experiments within a generation must run on the same GPU model.** Different GPU architectures (e.g. 3090 vs 4090 vs 5090) produce slightly different floating point results due to differing kernel implementations and cuDNN op ordering. This is safe to ignore for large deltas (>+0.3%), but can flip results for marginal ones (<+0.1%).
+
+- Always record the GPU model in `history.json` for each experiment (`"gpu": "RTX 5090"` etc.)
+- If switching GPU generations between batches, **re-run the current best baseline on the new GPU first** and use that re-run as the new reference point — never compare raw val_loss numbers across a GPU generation boundary
+- Results within 0.002 val_loss of each other should be treated as a tie regardless of GPU
+
+### Multi-contributor / multi-GPU collaboration protocol
+
+When multiple people with different GPUs contribute to the same leaderboard:
+
+**Contributor workflow (no coordination required during experiments):**
+1. Pull latest code and leaderboard from the shared repo
+2. Run the current baseline experiment (active baseline exp_id from leaderboard.md) on their GPU → record `local_baseline_loss`
+3. Run as many experiments as they want freely — no need to claim or announce anything
+4. Pick their single best result and submit a PR with:
+   - Their experiment config (added to `configs/ablation_configs.py`)
+   - A `history.json` entry including `val_loss`, `local_baseline_loss`, `delta`, and `gpu`
+
+**PR / history.json entry format:**
+```json
+{
+  "exp_id": "...",
+  "val_loss": <raw on contributor GPU>,
+  "local_baseline_loss": <baseline re-run on contributor GPU>,
+  "delta": <local_baseline_loss - val_loss>,
+  "gpu": "RTX 3090",
+  "contributor": "alice"
+}
+```
+
+**Promotion rule — owner verifies before leaderboard update:**
+The contributor's best result is only added to the leaderboard after the **reference GPU owner** re-runs that exact experiment config on the reference hardware. The owner's run is the authoritative val_loss. If it beats the current baseline, it becomes the new baseline. Duplicate experiments across contributors are fine — cheap to run and provide useful variance data.
 
 ---
 

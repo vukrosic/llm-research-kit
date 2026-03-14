@@ -4,6 +4,22 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-14 — New baseline: combo_deepnorm_bilinear (4.9869), Gen4 queue built
+
+### Baseline update
+`combo_deepnorm_bilinear` (val_loss **4.9869**, +1.47% over original) is the new best — bilinear FFN + residual_scale=0.707 stack additively. Both `new_bilinear` (5.0052) and `new_deepnorm_07` (5.0066) are independent wins that compose well together.
+
+### Gen4 queue (7 experiments)
+**Exploitation (5):** residual sweep around 0.707 (0.5, 0.6), wider bilinear (d_ff=3072), full MHA stacked on combo, cosine schedule on combo.
+**Exploration (2):** linear schedule on combo, LayerNorm instead of RMSNorm on combo.
+
+### What to watch
+- Residual sweep: if 0.5 or 0.6 beats 0.707, update baseline and try 0.4
+- If `ffn_bilinear_wide` wins, try bilinear + deepnorm + wide together
+- If schedule experiments win, add warmup to all future combos
+
+---
+
 ## 2026-03-13 (update) — Gen3 partial results: two new winners
 
 ### New findings

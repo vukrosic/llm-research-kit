@@ -1404,6 +1404,122 @@ ABLATION_CONFIGS["value_norm"]               = ValueNormConfig
 ABLATION_CONFIGS["layer_scale_001"]          = LayerScale001Config
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 4 — experiments on top of combo_deepnorm_bilinear baseline
+#  Base: QKLayerNorm + bilinear FFN + residual_scale=0.707
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class OptResidual06Config(ComboDeepnormBilinearConfig):
+    """Residual scale sweep: 0.6 (tighter DeepNorm than 0.707)."""
+    experiment_name: str = "opt_residual_06"
+    residual_scale: float = 0.6
+
+@dataclass
+class OptResidual05Config(ComboDeepnormBilinearConfig):
+    """Residual scale sweep: 0.5 (stronger DeepNorm)."""
+    experiment_name: str = "opt_residual_05"
+    residual_scale: float = 0.5
+
+@dataclass
+class FFNBilinearWideConfig(ComboDeepnormBilinearConfig):
+    """Wider bilinear FFN (d_ff=3072, 6x d_model) for more multiplicative capacity."""
+    experiment_name: str = "ffn_bilinear_wide"
+    d_ff: int = 3072
+
+@dataclass
+class AttnFullMHAComboConfig(ComboDeepnormBilinearConfig):
+    """Full MHA (n_kv_heads=8) stacked on bilinear+deepnorm combo."""
+    experiment_name: str = "attn_full_mha_combo"
+    n_kv_heads: int = 8
+
+@dataclass
+class OptCosineComboConfig(ComboDeepnormBilinearConfig):
+    """Cosine LR schedule + 5% warmup on bilinear+deepnorm combo."""
+    experiment_name: str = "opt_cosine_combo"
+    schedule_type: str = "cosine"
+    warmup_ratio: float = 0.05
+
+@dataclass
+class OptLinearComboConfig(ComboDeepnormBilinearConfig):
+    """Linear LR decay + 2% warmup on bilinear+deepnorm combo."""
+    experiment_name: str = "opt_linear_combo"
+    schedule_type: str = "linear"
+    warmup_ratio: float = 0.02
+
+@dataclass
+class NormLayernormComboConfig(ComboDeepnormBilinearConfig):
+    """LayerNorm instead of RMSNorm on bilinear+deepnorm combo."""
+    experiment_name: str = "norm_layernorm_combo"
+    norm_type: str = "layernorm"
+
+# Register Gen4 configs
+ABLATION_CONFIGS["opt_residual_06"]       = OptResidual06Config
+ABLATION_CONFIGS["opt_residual_05"]       = OptResidual05Config
+ABLATION_CONFIGS["ffn_bilinear_wide"]     = FFNBilinearWideConfig
+ABLATION_CONFIGS["attn_full_mha_combo"]   = AttnFullMHAComboConfig
+ABLATION_CONFIGS["opt_cosine_combo"]      = OptCosineComboConfig
+ABLATION_CONFIGS["opt_linear_combo"]      = OptLinearComboConfig
+ABLATION_CONFIGS["norm_layernorm_combo"]  = NormLayernormComboConfig
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  GENERATION 5 — experiments on top of opt_linear_combo baseline
+#  Base: bilinear FFN + residual_scale=0.707 + linear schedule + warmup=0.02
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class OptWarmup01Config(OptLinearComboConfig):
+    """Shorter warmup (1%) with linear decay — test if 2% was already too long."""
+    experiment_name: str = "opt_warmup_01"
+    warmup_ratio: float = 0.01
+
+@dataclass
+class OptWarmup05Config(OptLinearComboConfig):
+    """Longer warmup (5%) with linear decay — cosine used 5% and ranked 2nd."""
+    experiment_name: str = "opt_warmup_05"
+    warmup_ratio: float = 0.05
+
+@dataclass
+class OptLinearResidualStackConfig(OptLinearComboConfig):
+    """Stack linear schedule with residual_scale=0.5 — both were independent winners."""
+    experiment_name: str = "opt_linear_residual_stack"
+    residual_scale: float = 0.5
+
+@dataclass
+class OptLinearMHAStackConfig(OptLinearComboConfig):
+    """Full MHA (n_kv_heads=8) with linear schedule — full MHA was neutral alone."""
+    experiment_name: str = "opt_linear_mha_stack"
+    n_kv_heads: int = 8
+
+@dataclass
+class OptMuonLrLowConfig(OptLinearComboConfig):
+    """Lower muon_lr=0.02 with linear decay — decay may pair better with lower peak LR."""
+    experiment_name: str = "opt_muon_lr_low"
+    muon_lr: float = 0.02
+
+@dataclass
+class OptZLossConfig(OptLinearComboConfig):
+    """z_loss_weight=1e-4 — auxiliary entropy regularization to penalize large logits."""
+    experiment_name: str = "opt_z_loss"
+    z_loss_weight: float = 1e-4
+
+@dataclass
+class NormPreLinearConfig(OptLinearComboConfig):
+    """Pre-norm (vs sandwich) on linear baseline — test if pre-norm interacts differently."""
+    experiment_name: str = "norm_pre_linear"
+    norm_position: str = "pre"
+
+# Register Gen5 configs
+ABLATION_CONFIGS["opt_warmup_01"]              = OptWarmup01Config
+ABLATION_CONFIGS["opt_warmup_05"]              = OptWarmup05Config
+ABLATION_CONFIGS["opt_linear_residual_stack"]  = OptLinearResidualStackConfig
+ABLATION_CONFIGS["opt_linear_mha_stack"]       = OptLinearMHAStackConfig
+ABLATION_CONFIGS["opt_muon_lr_low"]            = OptMuonLrLowConfig
+ABLATION_CONFIGS["opt_z_loss"]                 = OptZLossConfig
+ABLATION_CONFIGS["norm_pre_linear"]            = NormPreLinearConfig
+
+
 def get_ablation_config(name: str, train_tokens: int = 10_000) -> LLMConfig:
     if name not in ABLATION_CONFIGS:
         raise ValueError(
