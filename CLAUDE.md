@@ -102,7 +102,7 @@ e.g.: attn_rope_scaled, ffn_bilinear_wide, opt_muon_lr_0.018, norm_rms_gate
 Each experiment must change **exactly one or two** things from the current best config. If you're testing more than two changes at once, split it into separate experiments (this is ablation research, not kitchen-sink).
 
 ### Minimum batch size
-**Every batch must contain at least 20 experiments.** Fewer than 20 is not enough to meaningfully cover the exploration/exploitation space. All experiments in a batch must be based on the current best config (lowest val_loss on the leaderboard) — never design a batch off a stale baseline.
+**Every batch must contain at least 50 experiments.** Fewer than 20 is not enough to meaningfully cover the exploration/exploitation space. All experiments in a batch must be based on the current best config (lowest val_loss on the leaderboard) — never design a batch off a stale baseline.
 
 ### Banned experiment types — do not design these
 The following are too basic and uninformative relative to the cost of running them:
@@ -143,6 +143,7 @@ After every batch of experiments, update `experiments/leaderboard.md`:
 
 ### Leaderboard entry minimum requirements
 - An experiment may only enter the leaderboard if it improves val_loss by **more than 0.002** over the previous record (the noise threshold from Section 8)
+- At current loss levels (~4.9), this corresponds to a minimum of **~+0.04% improvement** — anything below this is noise
 - **No negative improvements and no noise-level improvements** — if Δ ≤ 0.002, the experiment is a neutral or loser and does not get a leaderboard row
 - Experiments within 0.002 val_loss of the current record are considered ties and are not promoted
 
