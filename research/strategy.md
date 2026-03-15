@@ -4,6 +4,80 @@ AI-maintained log of what each batch tested, what was learned, and what comes ne
 
 ---
 
+## 2026-03-15 — Gen13 partial results: warm_steps sub-150 sweep (all losers)
+
+### What this batch tested
+5 experiments fine-tuning `muon_warm_momentum_steps` below the current best of 150: values 125, 130, 135, 140, 145.
+
+### Results: 0 leaderboard winners, 1 neutral, 4 losers
+| exp_id | val_loss | Δ | verdict |
+|--------|----------|---|---------|
+| gen13_warm135 | 4.7908 | +0.0020 worse | neutral (noise floor) |
+| gen13_warm140 | 4.7912 | +0.0024 worse | loser |
+| gen13_warm125 | 4.7932 | +0.0044 worse | loser |
+| gen13_warm130 | 4.7934 | +0.0046 worse | loser |
+| gen13_warm145 | 4.7961 | +0.0073 worse | loser |
+
+### Key findings
+- **All sub-150 warm_momentum_steps values are worse.** The downward side of the 150-step optimum is now confirmed. Values 125–145 all lose to 150. warm135 is the closest (at the noise floor).
+- **Still pending:** gen13_warm155 and gen13_warm160 to confirm whether 150 is a true optimum or if a slightly longer ramp (155–160) could eke out more.
+- **Leaderboard unchanged.** `gen12_warm150` (4.7888) remains the active baseline.
+
+---
+
+## 2026-03-15 — Gen12 results: new baseline gen12_warm150 (4.7888), Gen13 queued
+
+### What this batch tested
+90+ experiments on `gen11_x_singlu` baseline (4.8012). Exploitation: warm_momentum_steps sweep (150-300), residual_scale sweep (0.28-0.40), trust_region combos, grad_center combos, final_ln combos. Exploration: 15 novel FFN types (eluglu, celuglu, hardswishglu, sigmoidglu, softplusglu, sincosglu, singleprojglu, pregatelu, postgatelu, prenormdown, scalegate, topkglu, poly2, poly3, shared_qkv).
+
+### Results: 1 leaderboard winner, ~15 positive, ~20 neutral, ~55 losers, 3 crashed
+| exp_id | val_loss | Δ | key change |
+|--------|----------|---|------------|
+| gen12_warm150 | 4.7888 | +0.0124 | warm_momentum_steps=150 — **NEW RECORD** |
+| gen12_rs030_warm150 | 4.7915 | +0.0097 | rs=0.3 + warm150 |
+| gen12_rs030 | 4.7917 | +0.0095 | residual_scale=0.30 |
+| gen12_trust_warm200 | 4.7939 | +0.0073 | trust_region + warm200 |
+| gen12_warm200_rs030 | 4.7943 | +0.0069 | warm200 + rs030 |
+
+### Key findings
+- **warm_momentum_steps=150 is the new optimum.** 150 > 200 > 250 > 300. The ramp sweet spot is 150 steps — enough for exploration without wasting too much of the short 367-step training budget.
+- **residual_scale=0.5 remains optimal on warm150.** Despite rs030 being close, 0.5 still wins when combined with warm150. The optimal residual scale may depend on other hyperparameters.
+- **All 15 novel FFN types lost to singlu.** EluGLU (4.808) and CeluGLU (4.815) were closest. Sigmoidglu (4.986, -3.8%), softplusglu (4.933, -2.7%), postgatelu (4.922, -2.5%) were catastrophic. SinGLU remains uniquely effective.
+- **trust_region was neutral** — slight improvement when combined with warm200 but not standalone.
+- **grad_center was neutral** — no meaningful gain on singlu baseline.
+- **final_norm_type=layernorm lost** to rmsnorm (-0.002 to -0.004).
+- **3 crashes:** poly2, poly3, shared_qkv all crashed without producing metrics.
+
+### Failures
+- `gen12_x_poly2`, `gen12_x_poly3`: polynomial attention crashed
+- `gen12_x_shared_qkv`: shared QKV crashed
+
+### New baseline: gen12_warm150 (4.7888)
+Cumulative flags: qk_norm_type=layernorm, ffn_type=scispace_singlu, residual_scale=0.5, schedule_type=linear, warmup_ratio=0.02, muon_lr=0.018, use_bias=true, muon_warm_momentum=true, muon_warm_momentum_steps=150, muon_row_norm=true, muon_rms_norm_grad=true
+
+### Gen13 strategy (50 experiments queued)
+**Exploitation (25):**
+- A (8): Fine-tune warm_momentum_steps: 120-160 in steps of 5-10
+- B (3): Schedule type: cosine alone, cosine+warm03, cosine+warm05
+- C (5): Residual scale neighborhood: 0.42, 0.45, 0.48, 0.52, 0.55
+- D (9): Two-way combos: warm_steps × {cosine, residual_scale}
+
+**Exploration (25):**
+- E (7): Novel bilinear gate activations: cos, mish, gaussian, sqr, cubic, sq_silu, abs
+- F (7): Novel FFN architectures: asymglu, composite, moelite, tripleprojglu, leakyglu, geglu, reglu
+- G (3): Novel SwiGLU variants: deep, dual_gate, residual
+- H (2): Novel attention: cosine_attn, q_rope_only
+- I (3): Muon optimizer: adaptive_ns, stochastic_ortho (p=0.1, 0.05)
+- J (3): Cross-mechanism combos: cosine_attn+bilinear_cos, adaptive_ns+cosine, adaptive_ns+stoch_ortho
+
+### What to watch in Gen13
+- If cosine schedule beats linear → major finding, test cosine+warm_steps combos
+- If any bilinear gate (especially bilinear_cos) beats singlu → test that gate with warm150 tuning
+- If adaptive_ns or stochastic_ortho wins → stack with warm_steps winner
+- If warm_steps optimum shifts from 150 → refine further in gen14
+
+---
+
 ## 2026-03-14 — Gen11 results: new baseline gen11_x_singlu (4.8012)
 
 ### What this batch tested
