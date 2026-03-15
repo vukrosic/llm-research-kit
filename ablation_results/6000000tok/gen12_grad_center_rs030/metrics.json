@@ -1,0 +1,108 @@
+{
+  "experiment_name": "gen12_grad_center_rs030",
+  "ablation_flags": {
+    "use_embed_scale": true,
+    "use_qk_norm": true,
+    "muon_ns_steps": 5,
+    "norm_type": "rmsnorm",
+    "norm_position": "sandwich",
+    "final_norm_type": "rmsnorm",
+    "ffn_type": "scispace_singlu",
+    "activation_type": "squared_relu",
+    "d_ff": 2048,
+    "n_kv_heads": 4,
+    "use_rope": true,
+    "rope_base": 10000.0,
+    "use_bias": true,
+    "parallel_block": false,
+    "residual_scale": 0.3,
+    "n_layers": 22,
+    "d_model": 512,
+    "n_heads": 8,
+    "use_learned_pos": false,
+    "tie_weights": true,
+    "init_scheme": "default",
+    "muon_lr": 0.018,
+    "adamw_lr": 0.006,
+    "muon_momentum": 0.95,
+    "weight_decay": 0.2,
+    "grad_clip": 1.0,
+    "dropout": 0.0,
+    "schedule_type": "linear",
+    "warmup_ratio": 0.02,
+    "label_smoothing": 0.0,
+    "z_loss_weight": 0.0,
+    "stochastic_depth": 0.0,
+    "value_norm": false,
+    "layer_scale_init": null
+  },
+  "final_metrics": {
+    "val_loss": 4.794343709945679,
+    "val_accuracy": 0.2506857596482658,
+    "val_perplexity": 120.82505947183533,
+    "train_loss": 4.75810432434082
+  },
+  "setup_time_seconds": 6.131533145904541,
+  "active_training_time_seconds": 83.57603406906128,
+  "total_wall_time_seconds": 89.70756721496582,
+  "total_time_minutes": 1.4951261202494304,
+  "actual_steps": 367,
+  "tokens_seen": 6012928,
+  "train_tokens": 6000000,
+  "history": {
+    "steps": [
+      0,
+      50,
+      100,
+      150,
+      200,
+      300,
+      367
+    ],
+    "val_losses": [
+      10.882194423675537,
+      6.5335038471221925,
+      5.904262366294861,
+      5.487171635627747,
+      5.238879656791687,
+      4.915017924308777,
+      4.794343709945679
+    ],
+    "val_accuracies": [
+      0.0058097215437225205,
+      0.14439606741573033,
+      0.1826471665852467,
+      0.20607962872496335,
+      0.2205233268197362,
+      0.24124206155349293,
+      0.2506857596482658
+    ],
+    "val_perplexities": [
+      53220.25966866956,
+      687.8039542588723,
+      366.596711938747,
+      241.57298327808223,
+      188.4588455000406,
+      136.32175325384424,
+      120.82505947183533
+    ],
+    "elapsed_times": [
+      0.1739395221074422,
+      0.35090723435084026,
+      0.5273076216379802,
+      0.704069983959198,
+      0.8810574452082316,
+      1.1774912118911742,
+      1.3929325779279074
+    ],
+    "learning_rates": [
+      0.0025714285714285713,
+      0.015793871866295262,
+      0.013286908077994427,
+      0.010779944289693593,
+      0.008272980501392758,
+      0.0032590529247910867,
+      0.0018
+    ]
+  }
+}

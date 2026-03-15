@@ -1,11 +1,12 @@
 # Leaderboard
 
-**Current best / active baseline**: `gen11_x_singlu` — val_loss **4.8012**
+**Current best / active baseline**: `gen12_warm150` — val_loss **4.7888**
 **Original baseline**: `baseline` — val_loss **5.0611**
-*Last updated: 2026-03-14*
+*Last updated: 2026-03-15*
 
 | # | exp_id | val_loss | Δ vs previous record | % improvement | Key change |
 |---|--------|----------|-----------------------|---------------|------------|
+| 14 | `gen12_warm150` | 4.7888 | +0.0124 | +0.26% | `muon_warm_momentum_steps=150` — extending warm momentum ramp from 100→150 steps gives Muon optimizer more time in the low-momentum exploratory phase before committing to high momentum, improving early-training stability on singlu baseline. |
 | 13 | `gen11_x_singlu` | 4.8012 | +0.0097 | +0.20% | `ffn_type=scispace_singlu` — sine-gated linear unit (sin(Wx) * Vx) replaces bilinear FFN. Periodic gating creates oscillating activation that outperforms monotonic gates. Exploration experiment — completely novel FFN architecture. |
 | 12 | `muon_warm_row_rms` | 4.8109 | +0.0379 | +0.78% | `muon_row_norm=True` + `muon_rms_norm_grad=True` on warm-momentum baseline — row-normalize then RMS-normalize gradients before Muon orthogonalization. Dual normalization removes both per-neuron magnitude and global scale, making ortho purely directional. |
 | 11 | `g9_muon_warm_mom` | 4.8488 | +0.0125 | +0.26% | `muon_warm_momentum=True` — ramp Muon momentum from 0.5→0.95 over first 100 steps. Early training uses lower momentum for more responsive updates, then ramps to full momentum. |
