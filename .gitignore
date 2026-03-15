@@ -238,6 +238,7 @@ logs_debug/
 # Keep all JSON files in ablation_results folder
 !ablation_results/*.json
 !ablation_results/**/*.json
+!experiments/*.json
 !docs/timecapsule/**/*
 
 # gemini-cli settings
