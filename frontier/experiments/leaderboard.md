@@ -1,25 +1,18 @@
 # Frontier Architecture Leaderboard
 
-**Active baseline**: Transformer (ablation system gen12_warm150) — val_loss = 4.7888
+**Active baseline**: Transformer — val_loss = 3.4486
 
 This leaderboard compares architectures across families. The goal: find something that beats the transformer.
 
 ## Current Rankings
 
-| Rank | exp_id | Family | val_loss | Δ vs transformer | Params | Complexity | Recurrent |
-|------|--------|--------|----------|------------------|--------|------------|-----------|
-| 1 | gen12_warm150 | transformer | 4.7888 | baseline | 88M | O(n²) | No |
-
-*No frontier experiments completed yet. Run `python -m frontier.experiments.run_frontier` to begin.*
-
-## Family Leaderboard
-
-Best result per architecture family:
-
-| Family | Best exp_id | val_loss | Δ vs transformer |
-|--------|-------------|----------|------------------|
-| transformer | gen12_warm150 | 4.7888 | baseline |
+| Rank | exp_id | Family | val_loss | Δ vs transformer | Params | Speed (ms/step) | Notes |
+|------|--------|--------|----------|------------------|--------|-----------------|-------|
+| 1 | novel_value_residual_12M | novel | 3.4486 | +0.0000 | 107.4M | 383 | |
+| 2 | novel_conv_ts_qknorm_12M | novel | 3.5575 | +0.1088 | 107.4M | 383 | |
+| 3 | novel_differential_gqa_12M | novel | 3.5666 | +0.1180 | 110.3M | 467 | |
+| 4 | novel_soft_router_12M | novel | 3.6697 | +0.2211 | 99.1M | 416 | |
 
 ## History
 
-Entries are added here as experiments beat the previous best in their family.
+Last updated: 2026-03-16 02:36

@@ -4,6 +4,12 @@ This file governs how Claude Code operates in this repository. Read it completel
 
 ---
 
+## 0. HARD RULE — Training Time Limit
+
+**Every training run MUST be limited to 5 minutes maximum.** No exceptions. Use `frontier/run_timed.py --time 300` or equivalent time-limiting mechanism. Never launch a training run that could exceed 5 minutes.
+
+---
+
 ## 1. What This Project Is
 
 **0-to-1 frontier architecture research.** We are NOT optimizing transformers. We are searching for fundamentally new sequence modeling primitives — the next paradigm shift, as transformative as attention was to RNNs.

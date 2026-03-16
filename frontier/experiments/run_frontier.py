@@ -34,6 +34,8 @@ import frontier.architectures.rwkv
 import frontier.architectures.hybrid
 import frontier.architectures.conv_mixer
 import frontier.architectures.experimental
+import frontier.architectures.wave_interference
+import frontier.architectures.oscillatory_recurrence
 
 from configs.dataset_config import DataConfig
 from data.loader import setup_tokenizer
@@ -170,8 +172,9 @@ def run_single_frontier_experiment(
     cfg = build_config_from_entry(entry)
     set_eval_schedule(cfg, cfg.train_tokens)
 
-    # Update vocab_size from tokenizer
-    cfg.vocab_size = train_loader.dataset[0]["input_ids"].shape[0] if hasattr(train_loader.dataset, '__getitem__') else 49152
+    # vocab_size is set from the tokenizer in main(); pass it via entry
+    # Default 49152 matches SmolLM2-135M tokenizer
+    cfg.vocab_size = entry.get("vocab_size", 49152)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

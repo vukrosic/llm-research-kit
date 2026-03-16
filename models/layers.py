@@ -1,22 +1,37 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchtune.modules import RotaryPositionalEmbeddings
+import math
 from .components import SquaredReLUFeedForward
 
 
 class Rotary(nn.Module):
-    def __init__(self, dim: int, max_seq_len: int):
+    """Rotary Positional Embeddings (RoPE) — standalone implementation."""
+    def __init__(self, dim: int, max_seq_len: int, base: float = 10000.0):
         super().__init__()
-        self.rope = RotaryPositionalEmbeddings(
-            dim=dim, max_seq_len=max_seq_len, base=10000
-        )
+        self.dim = dim
+        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32) / dim))
+        self.register_buffer("inv_freq", inv_freq, persistent=False)
+        self._build_cache(max_seq_len)
 
-    def forward(self, x_BTHD: torch.Tensor):
-        # x_BTHD shape: [B, T, H, D] - need to convert to [B, T, H, D] for torchtune
-        # torchtune expects [batch, seq_len, num_heads, head_dim]
-        # Our input is already [B, T, H, D] which matches torchtune's expectation
-        return self.rope(x_BTHD)
+    def _build_cache(self, max_seq_len: int):
+        t = torch.arange(max_seq_len, dtype=self.inv_freq.dtype)
+        freqs = torch.outer(t, self.inv_freq)  # (max_seq_len, dim/2)
+        cos_cache = freqs.cos()
+        sin_cache = freqs.sin()
+        self.register_buffer("cos_cached", cos_cache, persistent=False)
+        self.register_buffer("sin_cached", sin_cache, persistent=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (B, T, H, D)
+        seq_len = x.shape[1]
+        cos = self.cos_cached[:seq_len].unsqueeze(0).unsqueeze(2)  # (1, T, 1, D/2)
+        sin = self.sin_cached[:seq_len].unsqueeze(0).unsqueeze(2)
+        # Split x into pairs and rotate
+        x1, x2 = x[..., ::2], x[..., 1::2]
+        out1 = x1 * cos - x2 * sin
+        out2 = x1 * sin + x2 * cos
+        return torch.stack((out1, out2), dim=-1).flatten(-2)
 
 
 class MultiHeadAttention(nn.Module):
