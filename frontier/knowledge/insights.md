@@ -77,11 +77,70 @@ The progressive conv→attn paradigm appears to be approaching a plateau around 
 - QK-norm is the last clear structural improvement found
 - Next breakthrough likely needs a fundamentally different mechanism, not more optimization
 
+## Batch 100 + Novel Non-Attention Tournament (5-min, d=512, n=22)
+
+### Attention vs Non-Attention gap
+| Category | Best val_loss | Example |
+|----------|-------------|---------|
+| Conv + VR Attention (best) | 3.759 | CosineAttnVR |
+| Standard GQA + Conv + VR | 3.784 | TSVRBase |
+| Pure MHConv (no attention) | 3.920 | PureConv |
+| Best novel non-attention | 4.004 | LearnedDecayConv |
+
+**The attention gap is ~0.22 val_loss.** No O(n) mechanism matched attention in 5 min.
+
+### What works in non-attention:
+1. **Physics-motivated kernels win**: LearnedDecayConv (damped oscillator: A·exp(-αt)·cos(ωt+φ)) = best novel arch (4.004)
+2. **Multi-head exponential decay** (4.009): Multiple timescales per head captures hierarchical structure
+3. **Dynamic conv bank** (4.026): Content-dependent kernel selection bridges the adaptivity gap
+4. **Token shift pyramid** (4.055): Log(n) shift offsets give cheap global coverage
+5. **Conv + cumsum hybrid** (4.097): Separating local (conv) and global (cumsum) is sound
+
+### What fails without attention:
+- **Pure cumsum methods** (5.0-5.3): CumsumHierarchy, PolynomialMixer, RecChannelMix — running averages lack the expressivity for sequence modeling
+- **Complex rotator** (4.459): Too slow (16K tok/s) and complex oscillations don't help at this scale
+- **Reaction-diffusion** (4.295): Beautiful theory, weak practice at 5 min
+
+### Key insight: PureConv (3.920) is remarkably strong
+The existing MHConv with 8 heads at kernel sizes [3,5,9,17,33,65] is BETTER than all 15 novel designs.
+Its advantages: (1) per-channel learned weights (not constrained), (2) SiLU activation per head,
+(3) gated output, (4) exponentially-spaced kernels give multi-scale coverage efficiently.
+
+### What attention provides that conv doesn't:
+The 0.136 gap between PureConv (3.920) and transformer (3.784) = value of attention.
+Attention provides: content-based routing (which tokens to read), dynamic weighting (how much),
+and global receptive field (any position). The best non-attention methods approximate some of
+these but none replicate all three.
+
+## Batch V2: Closing the Gap (Partial Results)
+
+**NEW BEST non-attention: V2_04_GatedMHConv = 3.915** (beats PureConv 3.920!)
+The key innovation: per-head content-dependent gating on MHConv. Each token selects
+which conv kernel sizes matter via a learned gate. This gives content-dependent
+multi-scale processing — the critical property that attention has and conv didn't.
+
+| Architecture | val_loss | Δ vs transformer | Key innovation |
+|---|---|---|---|
+| V2_04_GatedMHConv | **3.915** | +0.131 | Per-head content gating |
+| V2_03_ValueResConv | 3.935 | +0.151 | Value residual for conv |
+| V2_02_CrossHead | 3.949 | +0.165 | Cross-head interaction |
+| V2_01_WideKernel | 4.017 | +0.233 | Wider kernels (up to 511) |
+| V2_05_DecayShift | 4.102 | +0.318 | Hybrid decay+shift |
+
+**Key insight: content-dependent HEAD SELECTION is the missing piece.**
+Standard MHConv processes all heads equally. GatedMHConv lets each token choose
+which heads (= which kernel sizes = which temporal scales) to attend to.
+This is a form of content-dependent processing without pairwise comparison.
+
+Wider kernels alone (V2_01) actually HURT — they're too slow, processing fewer tokens.
+Value residual helps conv modestly (+0.015 vs PureConv).
+
 ## What To Try Next
 
-1. **Differential attention**: Two attention patterns subtracted to cancel noise
-2. **Decay masking**: Soft exponential boundary instead of hard window cutoff
-3. **Value residual connections**: Raw embedding fed into value projections (gradient highway)
-4. **Per-token routing**: Soft continuous routing between conv and attn per token
-5. **Scale test**: Run best at 24M, 48M tokens — does advantage grow or shrink?
-6. **O(n) global mixing**: Replace windowed attention with linear attention that actually works
+1. **Improve PureConv**: Add wider kernels (up to 512), better gating, cross-head interaction
+2. **Content-dependent conv**: Kernels generated or selected based on token content
+3. **Value residual for conv**: Feed embedding into conv value projections (worked +0.1 for attention)
+4. **Hybrid novel mixers**: Combine LearnedDecayConv + TokenShiftPyramid + DynamicConvBank
+5. **Gated linear recurrence via parallel scan**: If fast enough, this could be the missing piece
+6. **Mixture of conv experts**: Different conv heads activated per token
+7. **Scale test**: Run best non-attention at 12M tokens — does the gap shrink?

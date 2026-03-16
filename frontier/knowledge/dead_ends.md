@@ -56,6 +56,19 @@ These mechanisms were tested within the transformer and found to be losers. They
 - **MultiResConv (pyramid downsample→upsample)**: NON-CAUSAL (val_loss 1.51 = data leakage). Strided conv downsample + repeat_interleave upsample still leaks future through the stride grouping. Same fundamental issue as HierPoolMixer.
 - **Deep narrow (24L x 384d = 73M params)**: 3.6192 — worse than 88M models. Under-parameterized at this scale.
 
+### V2 Failures
+- **V2_08_GatedLinRecurrence** (CRASH): In-place tensor modification `h[:, t] = ...` in sequential loop incompatible with autograd. Sequential scan patterns need `torch.cat` or list-based accumulation, not in-place assignment.
+- **V2_09_ConvPlusScan** (CRASH): Same in-place modification issue as V2_08.
+- **V2_10_MultiGrainConv** (val_loss=0.646 = DATA LEAKAGE): Strided downsampling + repeat_interleave upsample is non-causal. Same issue as MultiResConv — strided views leak future info. ANY architecture that changes temporal resolution is suspect.
+
+### Novel Non-Attention Failures (Batch NoAttn-1)
+- **PolynomialMixer (5.056)**: Quadratic interactions via element-wise product + cumsum. Cumsum of products is not expressive enough — just captures running second moments without content-based routing.
+- **RecurrentChannelMix (5.110)**: Separated temporal (cumsum) + channel (MLP) mixing. Too weak — the temporal aggregation is just a running mean, and position-dependent channel MLP can't compensate.
+- **CumsumHierarchy (5.313)**: Multi-level cumsums (mean of means). Running averages of running averages just gives increasingly smoothed signals — no sharp feature extraction.
+- **ComplexRotator (4.459, 16K tok/s)**: Damped oscillatory states. Two problems: (1) very slow due to per-head conv with complex rotation, (2) periodic patterns in text are rare at token level.
+- **ReactionDiffusion (4.295)**: Activator-inhibitor system. Cool theory but diffusion-based mixing is too slow to propagate information. 3 steps of k=5 conv = receptive field of 15, which is too narrow.
+- **CausalDiffusion (4.220)**: Unrolled heat equation. Same issue — iterative nearest-neighbor mixing doesn't reach far enough. Would need many more steps (expensive).
+
 ### Batch 14-17 Failures
 - **Depth-scaled residuals (1/sqrt(2i+1))**: ConvGQADepthGate got 3.6118 — over-dampens later layers. Residual scaling hurts more than it helps at this depth.
 - **Removing RMSNorm (norm-free)**: ConvGQANormFree → NaN at step ~100. Normalization is non-negotiable.

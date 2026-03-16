@@ -4,17 +4,34 @@ This file governs how Claude Code operates in this repository. Read it completel
 
 ---
 
-## 0. HARD RULE — Training Time Limit
+## 0. HARD RULES
 
+### Training Time Limit
 **Every training run MUST be limited to 5 minutes maximum.** No exceptions. Use `frontier/run_timed.py --time 300` or equivalent time-limiting mechanism. Never launch a training run that could exceed 5 minutes.
+
+### NEVER STOP
+**Never stop experimenting. Never wait. Never pause to ask.** After every batch of experiments completes:
+1. Analyze results and write down findings in `frontier/knowledge/insights.md`
+2. Record dead ends in `frontier/knowledge/dead_ends.md`
+3. Design the next batch of experiments immediately
+4. Launch training immediately
+5. Repeat forever
+
+If anything interesting is invented — a new mechanism, an unexpected result, a promising direction — write it down immediately in insights.md.
 
 ---
 
-## 1. What This Project Is
+## 1. What This Project Is — The Ultimate Goal
 
-**0-to-1 frontier architecture research.** We are NOT optimizing transformers. We are searching for fundamentally new sequence modeling primitives — the next paradigm shift, as transformative as attention was to RNNs.
+**0-to-1 frontier architecture research. The goal: invent a model that does next-token prediction BETTER than the transformer.**
 
-We train ~88M-parameter models for 6M tokens to rapidly evaluate radical architectural ideas. The transformer is our baseline to beat, not our design template. A 1% improvement to a transformer is worthless here. We want architectures that work *differently* and *better*.
+Not an incremental improvement. Not a tweak. A fundamentally new architecture that outperforms attention-based transformers at sequence modeling. This would be a mega-breakthrough — the kind of invention that changes the field.
+
+We are searching for the NEXT attention mechanism. Something that doesn't exist yet. Something that processes sequences in a way nobody has tried, and does it better than dot-product attention with softmax.
+
+We train ~100M-parameter models for 5 minutes to rapidly evaluate radical architectural ideas. The transformer is our baseline to beat (val_loss=3.784 at 5min, 3.449 at 12M tokens). Any architecture that beats these numbers WITHOUT using attention is a breakthrough.
+
+**Use ideas from EVERYWHERE:** signal processing, control theory, dynamical systems, neuroscience, physics, information theory, topology, category theory, cellular automata, reservoir computing, quantum mechanics — anywhere that might yield a better way to route information through a sequence.
 
 ---
 
