@@ -124,23 +124,66 @@ multi-scale processing — the critical property that attention has and conv did
 | V2_04_GatedMHConv | **3.915** | +0.131 | Per-head content gating |
 | V2_03_ValueResConv | 3.935 | +0.151 | Value residual for conv |
 | V2_02_CrossHead | 3.949 | +0.165 | Cross-head interaction |
+| V2_13_TSMHConvVR | 3.943 | +0.159 | TokenShift + MHConv + ValueRes |
+| V2_02_CrossHead | 3.949 | +0.165 | Cross-head interaction |
+| V2_15_TriplePath | 3.968 | +0.184 | Three parallel conv paths |
 | V2_01_WideKernel | 4.017 | +0.233 | Wider kernels (up to 511) |
+| V2_12_TSConvWideVR | 4.024 | +0.240 | Wide kitchen sink |
 | V2_05_DecayShift | 4.102 | +0.318 | Hybrid decay+shift |
+| V2_14_DoubleConv | 4.113 | +0.329 | Two MHConv passes |
+| V2_06_ConvBankEMA | 4.159 | +0.375 | Conv bank + EMA |
+| V2_11_ConvMoE | 4.176 | +0.392 | Mixture of conv experts |
+| V2_08_GatedLinRec | CRASH | — | In-place autograd error |
+| V2_09_ConvPlusScan | CRASH | — | In-place autograd error |
+| V2_10_MultiGrain | 0.646 | — | DATA LEAKAGE (non-causal) |
 
 **Key insight: content-dependent HEAD SELECTION is the missing piece.**
 Standard MHConv processes all heads equally. GatedMHConv lets each token choose
 which heads (= which kernel sizes = which temporal scales) to attend to.
 This is a form of content-dependent processing without pairwise comparison.
 
-Wider kernels alone (V2_01) actually HURT — they're too slow, processing fewer tokens.
-Value residual helps conv modestly (+0.015 vs PureConv).
+**Wider kernels alone HURT** (V2_01 = 4.017, slower than standard MHConv) — bigger kernels
+are slower, so fewer tokens processed in 5 min, negating any representational benefit.
+
+**Kitchen sink doesn't work**: V2_12 (TSConvWideVR = 4.024) and V2_13 (TSMHConvVR = 3.943)
+show that combining many improvements doesn't sum. Simple GatedMHConv (3.915) beats them all.
+
+**MoE for conv is bad**: V2_11 (4.176) — routing overhead + smaller per-expert capacity = worse.
+
+**Value residual helps conv modestly**: +0.015 improvement over PureConv.
+
+## V3: Physics/Neuroscience-Inspired (Mostly Failed)
+
+8/13 experiments OOM'd. Physics-inspired mechanisms (Retention, Kalman, WavePropagation, NeuralODE,
+Hopfield, CompressiveMemory) create O(L²) or large intermediate tensors that don't fit at batch=4, L=2048.
+
+Best survivors: InfoBottleneck (4.303), DenseConv (4.412), StochDepth (4.600) — all much worse than
+GatedMHConv (3.915). **Lesson: theoretical elegance ≠ practical performance. Simple, fast, parallelizable
+mechanisms (conv + gating) dominate complex physics-inspired ones at this scale.**
+
+## V4: GatedMHConv Exploitation (Partial Results)
+
+| Variant | val_loss | Key change |
+|---------|----------|------------|
+| V4_09_OutResidual | 3.921 | Learned output residual connection |
+| V4_08_HeadNorm | 3.925 | RMSNorm per head before gating |
+| V4_10_DualValue | 3.952 | Dual value projections |
+| V4_07_GLU | 3.970 | GLU-style dual gating |
+| V4_06_CrossPost | 3.999 | Cross-head mixing after gating |
+
+**V4_09_OutResidual (3.921) matches GatedMHConv (3.915) within noise.** Adding a learned residual
+to the conv output (out = conv_out + α*x) is a minor improvement. No variant significantly beat
+the original GatedMHConv, confirming we're at a local optimum for this architecture family.
+
+**The GatedMHConv plateau is real at ~3.92.** No simple modification (more heads, different gating,
+normalization, residuals) breaks through. The remaining 0.131 gap to transformer requires something
+fundamentally different.
 
 ## What To Try Next
 
-1. **Improve PureConv**: Add wider kernels (up to 512), better gating, cross-head interaction
-2. **Content-dependent conv**: Kernels generated or selected based on token content
-3. **Value residual for conv**: Feed embedding into conv value projections (worked +0.1 for attention)
-4. **Hybrid novel mixers**: Combine LearnedDecayConv + TokenShiftPyramid + DynamicConvBank
-5. **Gated linear recurrence via parallel scan**: If fast enough, this could be the missing piece
-6. **Mixture of conv experts**: Different conv heads activated per token
-7. **Scale test**: Run best non-attention at 12M tokens — does the gap shrink?
+1. **Completely different mechanisms**: Hash-routing, sparse global conv, polynomial interactions,
+   dendritic computation, dilated conv stacks, adaptive EMA — these are in V5
+2. **Content-dependent GLOBAL interaction**: The key thing attention provides that conv doesn't —
+   any mechanism that allows content-dependent mixing across ALL positions could close the gap
+3. **Scale test**: Run GatedMHConv at 12M tokens to see if the gap shrinks or grows
+4. **Hybrid approaches**: GatedMHConv + some global context mechanism (EMA, cumsum, sparse taps)

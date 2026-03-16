@@ -66,8 +66,18 @@ These mechanisms were tested within the transformer and found to be losers. They
 - **RecurrentChannelMix (5.110)**: Separated temporal (cumsum) + channel (MLP) mixing. Too weak — the temporal aggregation is just a running mean, and position-dependent channel MLP can't compensate.
 - **CumsumHierarchy (5.313)**: Multi-level cumsums (mean of means). Running averages of running averages just gives increasingly smoothed signals — no sharp feature extraction.
 - **ComplexRotator (4.459, 16K tok/s)**: Damped oscillatory states. Two problems: (1) very slow due to per-head conv with complex rotation, (2) periodic patterns in text are rare at token level.
+- **OscillatoryRecurrence (8.401, 727 tok/s)**: Evolution of ComplexRotator using input-dependent frequencies. Catastrophic slowdown (40x slower than transformer) and failed to converge in 5-min window. Complex-valued rotations are too compute-heavy for current GPU kernels without custom implementation.
 - **ReactionDiffusion (4.295)**: Activator-inhibitor system. Cool theory but diffusion-based mixing is too slow to propagate information. 3 steps of k=5 conv = receptive field of 15, which is too narrow.
 - **CausalDiffusion (4.220)**: Unrolled heat equation. Same issue — iterative nearest-neighbor mixing doesn't reach far enough. Would need many more steps (expensive).
+
+### V3 Failures (Physics/Neuroscience-Inspired)
+- **RetentionMixer, WavePropagation, CompressiveMemory, NeuralODE, TopKMemConv, Hopfield, GatedPoolConv, ConvResNet** (ALL OOM): Physics-inspired mechanisms that create O(L²) or large intermediate tensors crash at batch_size=4, L=2048. Retention needs O(L²) decay matrix; others have excessive per-layer state.
+- **InfoBottleneckMixer (4.303)**: Information bottleneck via projection to small dim + back. Too lossy — 18K tok/s but the bottleneck destroys information that can't be recovered.
+- **DenseConvNet (4.412)**: Dense connections between conv layers (DenseNet-style). Too many skip connections add noise at 22 layers, plus slow (18K tok/s).
+- **StochDepthConv (4.600)**: Stochastic depth (random layer dropping during training). Too aggressive at 22 layers — dropping layers randomly destroys learned representations.
+- **AdaptiveSpanConv (5.071)**: Learned adaptive span per head. Extremely slow (8K tok/s) — the adaptive masking is too expensive.
+- **KalmanFilter (5.309)**: Kalman filter state estimation. State transition model is too simple (linear) and slow (29K tok/s but terrible loss).
+- **Key lesson**: Physics-inspired approaches at 512d/22L mostly OOM or are too slow. The mechanisms that work (conv, gating) are simple and parallelizable.
 
 ### Batch 14-17 Failures
 - **Depth-scaled residuals (1/sqrt(2i+1))**: ConvGQADepthGate got 3.6118 — over-dampens later layers. Residual scaling hurts more than it helps at this depth.
