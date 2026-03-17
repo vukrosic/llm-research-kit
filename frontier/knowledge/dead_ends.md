@@ -139,3 +139,24 @@ These mechanisms were tested within the transformer and found to be losers. They
 - **d=640 18L**: V9_07/V9_08 = 3.73-3.74. Too deep — 32.5K tok/s vs 35.8K for 16L. Throughput loss > depth gain.
 - **d=640 20L narrow FFN**: V9_12 = 3.720. Even deeper is even worse.
 - **Conv VR on ALL layers**: V9_09 = 3.695, worse than VR on last 5 only (V9_10 = 3.678). Early layers don't benefit from embedding blending — they need to learn fresh representations.
+
+### V11: Novel Mechanism Dead Ends
+- **Parallel conv+attn within a layer**: V11_03 = 3.704 (vs control 3.676). Running conv and attn in parallel on the same input, then gating, wastes compute. The attention already captures what's needed — adding conv in parallel just adds params/slowdown without new information.
+- **All-parallel (16 layers)**: V11_01 = 4.029 at 20K tok/s. 16 parallel conv+attn layers = 138M params, half the throughput, terrible result. More attention ≠ better.
+- **4 parallel end layers**: V11_02 = 3.769 at 30K tok/s. Better but still slower and worse than 1 well-placed sequential attention.
+- **Additive attention (O(n) via cumulative weighted sum)**: V11_05 = 3.875, V11_06 (3×) = 3.887. Factored q_gate × cumsum(k_gate × v) is NOT content-content comparison. It's just a weighted running average — same weakness as all cumsum-based approaches. The softmax in real attention is doing critical work.
+- **Dense skip connections to attention layer**: V11_07 CRASH — dimension mismatch (3 captured layers × d vs expected 4×d). Even if fixed, DenseNet-style cross-layer connections failed in V3 (4.412). The residual stream already carries information.
+- **2 VR attn + conv VR**: V11_04 = 3.680 ≈ control 3.676. Adding a second attention layer at layer 5 + conv VR doesn't help. Confirms: 1 well-placed attention is sufficient.
+
+### V12: New Paradigm Dead Ends
+- **Multi-query attention (4Q shared KV)**: V12_01 = 3.706 (vs control ~3.68). Having 4 different attention patterns with shared K/V is worse than 1 well-tuned single-head. The softmax-gated head combination adds noise vs one clean attention pattern.
+- **Multi-query 8Q**: V12_06 = 3.729 at 32.6K tok/s. Even worse — 8 queries is slower and noisier.
+- **ALiBi position bias**: V12_02 = 3.835 — MUCH worse. ALiBi's linear distance penalty fights with the learned attention patterns. With only 1 attention layer, the model needs maximum freedom in attention, not position constraints.
+- **Gated linear recurrence (parallel cumsum)**: V12_03 = NaN. The log-gate → cumsum → exp trick is STILL numerically unstable even in fp32. Cumsum of log-gates accumulates error. Recurrence via cumsum is fundamentally broken without custom kernels.
+- **Parallel recurrence + attention**: V12_04 = NaN. The recurrence poisons gradients, causing attention to also diverge.
+- **Downsampled attention (2x pool)**: V12_05 = 2.087 = DATA LEAKAGE. Average pooling groups of 2 tokens includes the NEXT token in each group, violating causality.
+- **Cross-layer attention (K/V from layers 7-9)**: V12_07 = 3.777. Detached features from earlier layers are stale and don't help. The current hidden state already encodes all needed information via the residual stream.
+- **Wider FFN at attention layer**: V12_09 = 3.683. Marginal improvement (within noise of control). The FFN after attention doesn't need to be wider — the attention itself is the bottleneck, not the FFN.
+
+### V13: Radical Topology Dead Ends (partial — run in progress)
+- **Attention on difference (x - embed)**: V13_01 = 3.843 — MUCH worse. Using Q/K from the delta (what conv changed) instead of the full hidden state strips away the rich features that attention needs for content-based routing. The attention Q/K projections need the FULL representation, not just the change.

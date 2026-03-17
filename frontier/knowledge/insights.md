@@ -465,7 +465,7 @@ d=640, 16 layers, 124M params:
 val_loss = 3.665-3.668 (seed-dependent), 35.5K tok/s.
 **Beats transformer (3.784) by 3.1% at 5 minutes of training.**
 
-### Architecture Journey
+### Architecture Journey (Complete V1–V12)
 | Batch | Best val_loss | Δ trans | Key Discovery |
 |-------|-------------|---------|---------------|
 | V1-V5 | 3.915 | +0.131 | GatedMHConv = best non-attention mechanism |
@@ -473,12 +473,104 @@ val_loss = 3.665-3.668 (seed-dependent), 35.5K tok/s.
 | V7 | 3.713 | -0.071 | Value residual from embedding |
 | V8 | 3.684 | -0.100 | Width scaling (d=640 > d=512) |
 | V9 | 3.668 | -0.116 | Optimal placement at ~60% depth |
-| V10 | 3.665 | -0.119 | Plateau. Alpha/conv VR = marginal |
+| V10 | 3.665 | -0.119 | Plateau confirmed. Alpha/conv VR = marginal |
+| V11 | 3.676 | -0.108 | Parallel conv+attn & additive attn all failed |
+| V12 | 3.683 | -0.101 | Multi-query, ALiBi, recurrence all failed |
+
+## V11: Novel Mechanisms — ALL FAILED
+
+No V11 architecture beats V10 best (3.665). Control: 3.676.
+
+| Rank | Architecture | val_loss | Δ V10 | tok/s | Key |
+|------|-------------|----------|-------|-------|-----|
+| 1 | V11_08 Control | 3.676 | +0.011 | 35,630 | V9_13 copy |
+| 2 | V11_04 2VR+ConvVR | 3.680 | +0.015 | 34,536 | 2 attn + conv VR |
+| 3 | V11_03 Parallel1 | 3.704 | +0.039 | 34,826 | Parallel conv+attn at L10 |
+| 4 | V11_02 ParallelLast4 | 3.769 | +0.104 | 30,110 | 4 parallel layers |
+| 5 | V11_05 Additive | 3.875 | +0.210 | 36,608 | O(n) additive attn |
+| 6 | V11_06 AdditiveTriple | 3.887 | +0.222 | 36,416 | 3× additive attn |
+| 7 | V11_01 ParallelAll | 4.029 | +0.364 | 19,613 | All 16 parallel |
+| - | V11_07 DenseSkip | CRASH | — | — | Dimension mismatch |
+
+### Key V11 Insights
+1. **Parallel conv+attn within a layer is WORSE than sequential replacement**: V11_03 (parallel, 3.704) vs control (3.676). Running both on same input adds params but the conv output at a layer that already has attention provides no benefit — the attention alone is doing the important work.
+2. **Additive attention (cumulative weighted sum) is NOT attention**: V11_05 = 3.875, barely better than pure conv (3.909). The factored q_gate × cumsum(k_gate × v) doesn't capture pairwise token comparisons.
+3. **More parallel layers = death by slowness**: V11_01 at 20K tok/s processes only 6M tokens (vs 10.7M for control). Throughput matters enormously in time-budgeted training.
+4. **2 VR attn@5,10 + conv VR@11-14 = 3.680**: Not better than 1 VR attn@10 (3.676 control). Confirms V8/V10 finding that extra attention layers don't help.
+
+## V12: New Paradigms — ALL FAILED
+
+No V12 architecture breaks the plateau. Control was noisy (3.749 due to GPU slowdown).
+
+| Rank | Architecture | val_loss | tok/s | Key |
+|------|-------------|----------|-------|-----|
+| 1 | V12_09 WideFFN@attn | 3.683 | 34,761 | 2x wider FFN at attn layer |
+| 2 | V12_08 TwoVR@5,10 | 3.686 | 34,565 | 2 single-head VR |
+| 3 | V12_01 MultiQuery4Q | 3.706 | 33,633 | 4Q shared KV — worse |
+| 4 | V12_06 MultiQuery8Q | 3.729 | 32,590 | 8Q shared KV — even worse |
+| 5 | V12_10 Control | 3.749 | 31,187 | Noisy (GPU throttle?) |
+| 6 | V12_07 CrossLayer | 3.777 | 35,460 | K/V from detached layers |
+| 7 | V12_02 ALiBi | 3.835 | 36,333 | Position bias hurts |
+| - | V12_05 Downsampled | 2.087 | - | DATA LEAKAGE |
+| - | V12_03/04 Recurrence | NaN | - | Numerically unstable |
+
+### Key V12 Insights
+1. **Multi-query is WORSE than single-head**: 4 attention patterns with shared KV (3.706) < 1 clean attention pattern (~3.67). After 10 conv layers build rich features, one focused attention pass is optimal.
+2. **ALiBi position bias hurts with single attention layer**: 3.835 vs ~3.67. The single layer needs maximum freedom to attend anywhere — ALiBi's distance penalty constrains it.
+3. **Gated linear recurrence via cumsum is fundamentally broken in bf16**: Fifth attempt at parallel scan via log-space cumsum. Always NaN. Needs custom CUDA kernel.
+4. **Downsampled attention = data leakage**: Average pooling adjacent tokens is non-causal. Same lesson as all resolution-changing approaches.
+5. **Cross-layer attention doesn't help**: Detached features from earlier layers are stale. Residual stream already carries all info.
+
+## V13: Radical Topology (IN PROGRESS — partial results)
+
+V13_01 (Attention on difference: Q/K from x-embed) = 3.843 — much worse than control. Attending to what conv changed rather than the full hidden state loses the rich features that attention needs for routing.
+
+Remaining V13 experiments still running: dual-head, bottleneck, repeated, two-stage, higher LR, progressive width, projected VR.
+
+## Grand Summary: What We Know After 12 Batches (~100 architectures)
+
+### The Winning Architecture
+```
+d=640, 16 layers, 124M params, 35.5K tok/s:
+  Layers 0-9:   GatedMHConv(d=640, 8 heads, kernels=[3,5,9,17,33,65], sigmoid gating)
+  Layer 10:     SingleHeadAttn(d_qk=80, d_v=640, QK-norm, VR alpha≈0.5-0.8)
+  Layers 11-15: GatedMHConv(d=640, 8 heads, ...)
+  FFN:          SwiGLU(d=640, dff=2560) per layer
+  Other:        Pre-norm (RMSNorm), tied embeddings, EmbeddingWithScale
+  Training:     Muon(lr=0.024) for 2D params, AdamW(lr=0.006) for rest
+```
+**val_loss = 3.665, beats transformer (3.784) by 3.1%.**
+
+### The 5 Key Discoveries (in order of impact)
+1. **GatedMHConv** (V2): Content-dependent head gating on multi-scale causal conv. Best non-attention mechanism. The sigmoid gate lets each token choose which temporal scales matter.
+2. **SingleHead attention** (V6): 1 head with full-width V beats 8 heads with narrow V. After deep conv processing, one focused global pass > many weak passes.
+3. **Value Residual** (V7): Blending raw embedding into V (+0.065 improvement). Attention needs raw token identity after 10+ conv layers of processing.
+4. **Width > Depth** (V8-V9): d=640 × 16L >> d=512 × 22L at similar param count. Width gives each layer more capacity; extra depth just slows training.
+5. **Placement at ~60% depth** (V9): Attention at layer 10/16. Enough conv before (feature extraction) and after (post-processing).
+
+### What Categorically Does NOT Work
+- **O(n) attention approximations**: Additive attn (V11), linear attn (V6), cumsum-based (V4-V5). The softmax in real attention is irreplaceable.
+- **Parallel scan / recurrence via cumsum**: NaN every time in bf16. 5+ attempts (V2, V5, V12). Needs custom CUDA kernels.
+- **Multi-head attention**: 8 heads (V6_01) is always worse than 1 head (V6_06). Splitting the value space loses cross-feature information.
+- **Multi-query attention**: 4Q/8Q shared KV (V12) is worse than 1Q. Extra attention patterns add noise.
+- **Resolution changes**: Downsampling, upsampling, pooling = data leakage every time (V2, V5, V12).
+- **Position bias (ALiBi)**: Hurts when you have only 1 attention layer (V12). Needs maximum freedom.
+- **Combining mechanisms**: Kitchen sink approaches (V4, V7, V8, V10, V11) never sum. Mechanisms interfere.
+- **Physics-inspired architectures**: Retention, Hopfield, Kalman, wave propagation, reaction-diffusion (V3, V5). Either OOM, numerically unstable, or too slow.
+
+### The Plateau Hypothesis
+The conv+SingleHead+VR architecture at ~3.665 appears to be a local optimum. 30+ variants across V10-V12 cluster within 0.02 of each other. The architecture has been optimized along every accessible dimension:
+- Conv architecture (V1-V5): GatedMHConv is optimal
+- Attention design (V6-V7): SingleHead with full-width V is optimal
+- VR mechanism (V7-V8): alpha=0.5-0.8 from embedding is optimal
+- Width/depth (V8-V9): d=640, 16L is optimal
+- Placement (V9-V10): Layer 10 of 16 is optimal
+
+Breaking through requires either (a) a fundamentally new mechanism, (b) longer training (12M+ tokens), or (c) a different optimizer/LR configuration.
 
 ## What To Try Next
 
 1. **12M token scale test**: Train best architecture for full 12M token budget to compare with existing best (3.449)
-2. **Fundamentally new ideas**: The conv+single-head-VR paradigm is exhausted. Need a qualitatively different approach.
-3. **Dynamic routing**: Instead of fixed single attention layer, learn when to attend
-4. **Attention + conv WITHIN a layer**: Parallel conv+attention rather than sequential
-5. **State-space model hybrid**: Replace GatedMHConv with SSM for some layers
+2. **Learning rate sweep**: The Muon lr=0.024 was tuned for pure conv. The hybrid may benefit from different LR.
+3. **Completely novel mixing**: Ideas not yet tried — e.g., differentiable sorting with causal constraints, learned position-dependent routing, or meta-learned conv kernels
+4. **Sparse attention**: Instead of full causal attention, attend to only top-k most relevant positions per token
