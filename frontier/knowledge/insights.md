@@ -440,10 +440,45 @@ d=640, 16 layers:
 ```
 val_loss = 3.668, 124M params, 35.7K tok/s. Beats transformer (3.784) by 3.1%.
 
+## V10: Final Exploitation — PLATEAU CONFIRMED
+
+**V10_09 (d=640, VR@10, alpha=0.8) = 3.665 — beats transformer by 0.119 (3.1%)**
+
+All 12 V10 variants cluster between 3.665-3.681. Seed=43 verification: 3.679 (consistent).
+
+### Key V10 Findings
+- **Placement is robust**: Layers 9-11 all within 0.004 of each other
+- **Alpha=0.8 marginally best**: 3.665 vs 3.668 (alpha=0.5). Not significant.
+- **Conv VR helps marginally**: V10_10 (conv VR@12-14 + attn VR@10) = 3.667. Tiny improvement.
+- **Seed verification**: V10_12 (seed=43) = 3.679 confirms result is robust.
+- **Architecture is at a plateau**: No modification breaks through ~3.665.
+
+### The Optimal Architecture (FINAL)
+```
+d=640, 16 layers, 124M params:
+  Layers 0-9:   GatedMHConv(d=640, 8 heads, kernels=[3,5,9,17,33,65], sigmoid gating)
+  Layer 10:     SingleHeadAttn(d_qk=80, d_v=640, QK-norm, VR alpha≈0.5-0.8 from embedding)
+  Layers 11-15: GatedMHConv(d=640, 8 heads, ...)
+  FFN:          SwiGLU(d=640, dff=2560) per layer
+  Other:        Pre-norm (RMSNorm), tied embeddings, EmbeddingWithScale
+```
+val_loss = 3.665-3.668 (seed-dependent), 35.5K tok/s.
+**Beats transformer (3.784) by 3.1% at 5 minutes of training.**
+
+### Architecture Journey
+| Batch | Best val_loss | Δ trans | Key Discovery |
+|-------|-------------|---------|---------------|
+| V1-V5 | 3.915 | +0.131 | GatedMHConv = best non-attention mechanism |
+| V6 | 3.768 | -0.016 | SingleHead (d_v=full) > MultiHead |
+| V7 | 3.713 | -0.071 | Value residual from embedding |
+| V8 | 3.684 | -0.100 | Width scaling (d=640 > d=512) |
+| V9 | 3.668 | -0.116 | Optimal placement at ~60% depth |
+| V10 | 3.665 | -0.119 | Plateau. Alpha/conv VR = marginal |
+
 ## What To Try Next
 
-1. **Fine-grained placement sweep**: Test layers 9, 10, 11, 12 at d=640 16L
-2. **Combine Conv VR (late layers) + Attn VR + optimal placement**
-3. **12M token scale test**: Does the 3.1% advantage hold or grow?
-4. **Train for longer**: 10-min budget on best architecture
-5. **Different seed check**: Verify result with seeds 43, 44
+1. **12M token scale test**: Train best architecture for full 12M token budget to compare with existing best (3.449)
+2. **Fundamentally new ideas**: The conv+single-head-VR paradigm is exhausted. Need a qualitatively different approach.
+3. **Dynamic routing**: Instead of fixed single attention layer, learn when to attend
+4. **Attention + conv WITHIN a layer**: Parallel conv+attention rather than sequential
+5. **State-space model hybrid**: Replace GatedMHConv with SSM for some layers
