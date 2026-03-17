@@ -79,6 +79,25 @@ These mechanisms were tested within the transformer and found to be losers. They
 - **KalmanFilter (5.309)**: Kalman filter state estimation. State transition model is too simple (linear) and slow (29K tok/s but terrible loss).
 - **Key lesson**: Physics-inspired approaches at 512d/22L mostly OOM or are too slow. The mechanisms that work (conv, gating) are simple and parallelizable.
 
+### V5: Radical Alternatives (All Worse Than GatedMHConv)
+- **Hash routing (5.44)**: Content-dependent bucket assignment via learned hashing. Completely fails — soft bucket membership doesn't create meaningful content-based mixing. The einsum over bucket features loses positional information.
+- **Token sorting (5.13)**: Sort by learned key, conv in sorted space. Fails because sorting disrupts sequential structure and doesn't preserve causality. Position information is lost even with position bias.
+- **EMA-based approaches (NaN, NaN, 7.27)**: Three variants all fail. The cumsum trick for parallel EMA (cumsum of log-decays → exp) is numerically unstable in bf16. Log of small decays → large negative numbers → cumsum → overflow/underflow. Would need fp32 or custom kernels.
+- **Frequency-domain gating (4.46)**: Causal windowed band gating. Very slow (13.8K tok/s due to unfold) and band-pass filtering of sliding windows isn't expressive enough.
+- **PID control (4.09)**: Proportional + integral (cumsum) + derivative (diff). The integral term (cumulative mean) is too smooth and the derivative term (diff) is too noisy. Neither captures content-dependent temporal patterns.
+- **Sparse global taps (4.07)**: Fixed exponential-position taps (1,2,4,...,1024) with learned weights. Too sparse — the few tap positions don't align with relevant context positions. And slow (26K tok/s) due to multiple shifted copies.
+- **Lateral inhibition (4.06)**: Competitive head suppression via softmax over head energies. Doesn't help — the competition is too rigid and heads already specialize via learned kernels.
+- **Key lesson**: GatedMHConv's formula (per-head depthwise causal conv + SiLU + content-dependent sigmoid gating + output projection) is a LOCAL OPTIMUM in non-attention architecture space. No radical alternative from signal processing, neuroscience, control theory, or hash-based routing comes close. The 0.131 gap to transformer requires content-content comparison, not a better convolution variant.
+
+### V4: GatedMHConv Exploitation Dead Ends
+- **All 15 GatedMHConv variants within 0.12 of each other**: The architecture is at a local optimum. No modification of gating mechanism (sigmoid, softmax, per-channel), number of heads (8 vs 16), activation function (SiLU vs GELU), normalization (head norm), residual connections, token shift, value residual, or dual value paths breaks through ~3.92. The plateau is structural, not parametric.
+- **More heads = worse**: V4_01 (16 heads, 3.970) worse than 8 heads (3.915). Smaller per-head dim = less expressive per head.
+- **Softmax competitive gating**: V4_02 (3.978) — forcing heads to compete via softmax is too rigid vs independent sigmoid gates.
+- **Cumsum for global context**: V4_11 (4.038) — running averages are too weak for global mixing. Confirms: cumsum ≠ attention.
+- **Deep conv (2 stacked per head)**: V4_12 (3.983) — stacking convs within a head doesn't help. Receptive field already covered.
+- **Cross-head mixing**: V4_06 (3.999) — mixing head outputs after gating adds overhead without benefit.
+- **Kitchen sink**: V4_15 (3.938) combining token shift + value residual is WORSE than base. Mechanisms interfere.
+
 ### Batch 14-17 Failures
 - **Depth-scaled residuals (1/sqrt(2i+1))**: ConvGQADepthGate got 3.6118 — over-dampens later layers. Residual scaling hurts more than it helps at this depth.
 - **Removing RMSNorm (norm-free)**: ConvGQANormFree → NaN at step ~100. Normalization is non-negotiable.
@@ -87,3 +106,36 @@ These mechanisms were tested within the transformer and found to be losers. They
 - **GatedLinearAttention (Batch 17)**: Dimension mismatch: d_head=80 (from 640/8) vs d_head_state=32. Need to match dimensions or use separate projections.
 - **ProgressiveGQADeep (16L x 640d)**: 3.5990 — deeper at same width worse than shallower+wider. Confirms width > depth.
 - **ConvHeavyAttnLight (12L, 9 conv + 3 attn)**: 3.6064 — too few attention layers. 50/50 split is the sweet spot.
+
+### V6: Minimal Attention Hybrid Dead Ends
+- **Low-rank attention (d_head=16)**: V6_05 = 3.927, barely better than pure conv (3.909). Q/K projections need enough capacity (d_head≥64) to form meaningful attention patterns. d_head=16 compresses too much.
+- **Chunked linear attention (ELU+1 feature map)**: V6_08 = 4.651 — catastrophically bad. The inter-chunk scaling (0.1) is ad-hoc, and ELU+1 normalization is wrong. Linear attention needs careful implementation.
+- **Pure transformer with conv optimizer settings**: V6_10 = 4.296. The Muon lr=0.024 / AdamW lr=0.006 settings are tuned for conv models, NOT for pure transformers. The real baseline (3.784) uses different training infrastructure.
+- **PolyConv + attention**: V6_11 = 3.972, WORSE than GatedMHConv + attention (3.854). PolyConv is both slower (29K vs 35K tok/s) and less expressive. GatedMHConv is strictly superior as the conv primitive.
+- **Interleaved conv/attn (confirmed again)**: V6_04 = 3.873 vs V6_03 progressive = 3.844, same 4 attn layers. Progressive (conv-first, attn-last) always wins.
+- **More multi-head attention layers ≠ better**: V6_12 (6 attn, 3.846) barely better than V6_03 (4 attn, 3.844). Adding attention layers has sharply diminishing returns after 2-4.
+- **8-head standard attention < 1 single-head attention**: V6_01 (8-head, 3.854) vs V6_06 (single-head, 3.768). Splitting into 8 narrow heads loses cross-feature information. With 21 conv layers having already built rich representations, one full-width pass is more effective.
+
+### V7: SingleHead Exploitation Dead Ends
+- **Attention at beginning**: V7_02 = 3.929 (worse than pure conv 3.909). Attention on raw embeddings is useless — needs conv-processed features.
+- **d_qk=32**: V7_05 = 3.836. Q/K projections too small for meaningful content routing. Minimum d_qk≈64.
+- **d_qk=256 vs d_qk=128**: V7_13 (3.760) ≈ V7_06 (3.758). No benefit from Q/K wider than 128.
+- **ScaledRes conv + attention**: V7_07 = 3.790 vs control 3.777. V4's per-dimension scaling doesn't help when attention is present.
+- **2 SingleHead at END (both at end)**: V7_14 = 3.793. Two attention layers at the same position waste capacity. Better to spread them.
+- **4-head attention (d_v=128)**: V7_10 = 3.823. Still worse than 1-head (3.777). Multi-head always loses at this setup.
+- **3 SingleHead layers**: V7_04 = 3.779. Three layers is slower (33K tok/s vs 35K) and not significantly better than 1 well-placed layer (3.744).
+- **Kitchen sink (ScaledRes + VR)**: V7_15 = 3.719 vs VR alone V7_08 = 3.713. Combining ScaledRes with value residual slightly hurts — mechanisms may interfere.
+
+### V8: VR Exploitation Dead Ends
+- **VR alpha=0.3**: V8_03 = 3.741 — too little embedding. The attention V-projection needs substantial raw token identity (alpha≥0.5).
+- **VR from mid-layer state**: V8_10 = 3.723, worse than VR from embedding (3.698). Processed intermediate representations lose the raw token identity that VR provides.
+- **VR at layer 7 (too early)**: V8_11 = 3.722, worse than layer 11 (3.698). Only 7 conv layers haven't built enough features for attention to route.
+- **d_qk=128 with VR**: V8_08/V8_14 ≈ V8_01. d_qk=128 adds nothing when VR is present — VR provides the information that larger Q/K capacity was compensating for.
+- **3 VR layers**: V8_12 = 3.699 ≈ V8_01 = 3.698 but 5% slower. Three attention layers don't sum.
+- **Learned per-dim alpha**: V8_09 = 3.704 ≈ fixed alpha=0.7. Not worth the extra parameters.
+
+### V9: Width + Placement Dead Ends
+- **d=704 14L**: V9_03/V9_04 = 3.71. Awkward middle ground — not wide enough to compensate for fewer layers.
+- **d=640 18L**: V9_07/V9_08 = 3.73-3.74. Too deep — 32.5K tok/s vs 35.8K for 16L. Throughput loss > depth gain.
+- **d=640 20L narrow FFN**: V9_12 = 3.720. Even deeper is even worse.
+- **Conv VR on ALL layers**: V9_09 = 3.695, worse than VR on last 5 only (V9_10 = 3.678). Early layers don't benefit from embedding blending — they need to learn fresh representations.
