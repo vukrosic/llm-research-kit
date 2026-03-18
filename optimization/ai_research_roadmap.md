@@ -2,191 +2,306 @@
 
 ## Goal
 
-Build the best possible 1B dense GPT model — matching or beating published 1B baselines (TinyLlama, Pythia-1B, OLMo-1B). Use it to prove the auto-research tool works. Every experiment = a post. Every result = content.
+Build a 1B dense GPT that is competitive with public 1B baselines and use the optimization process itself as proof that the auto-research loop works.
 
-**Hard deadlines:**
-- March 25: one publishable result for professor cold-emails
-- May 1: visa expires — need concrete research portfolio by then
+Deadlines:
+- March 25: produce one publishable, defensible result for professor outreach
+- May 1: finish a concrete research portfolio before visa expiry
 
-## Compute
+Current constraints:
+- 1x L40S 48GB
+- limited budget, so proxy quality matters more than search breadth
+- every experiment must be trackable, comparable, and publishable
 
-| Resource | Value |
-|----------|-------|
-| Balance | $100 → ~357 hours at $0.28/hr |
-| GPU | 1× L40S 48GB |
-| 88M throughput | ~60k tokens/sec (measured) |
-| 1B throughput | **unknown — must measure first** |
-| 1B memory fit | **unknown — must verify first** |
+## Source Of Truth
 
-## Current Model Architecture
+- `optimization/experiments.jsonl`: append-only run ledger
+- `optimization/decisions.md`: one decision note per completed sweep
+- `optimization/analyze_sweep.py`: rank runs by mean validation loss after warmup, then final validation loss, then tokens/sec
 
-| Component | Implementation |
-|-----------|---------------|
-| Attention | Merged QKVO projection, GQA (4 KV heads) |
-| QK-norm | ✅ RMSNorm on Q and K (already present) |
-| Positional | RoPE (base=10000) |
-| FFN | Squared ReLU (Primer-style) |
-| Normalization | Pre-norm RMSNorm |
-| Embeddings | Tied input/output, scaled by √d_model |
+Required fields in `experiments.jsonl`:
+- `exp_id`
+- `phase`
+- `question`
+- `model_config`
+- `dataset_path`
+- `seed`
+- `changes`
+- `train_tokens`
+- `train_seconds`
+- `status`
+- `val_loss`
+- `train_loss`
+- `tokens_per_second`
+- `actual_steps`
+- `metrics_path`
+- `checkpoint_path`
+- `notes`
 
-## Existing LR Data (88M model)
+Status labels:
+- `done`: evidence exists and is recorded
+- `ready to run`: runnable now with current code
+- `blocked by infra`: do not run until tooling is added
 
-| Duration | Tokens | Best LR | Val Loss | Ranking Stable? |
-|----------|--------|---------|----------|-----------------|
-| 5s | ~300K | 0.008 | 6.764 | — |
-| 10s | ~620K | 0.007 | 6.513 | no (shifted) |
-| 20s | ~1.2M | 0.006 | 6.263 | no (shifted) |
-| 80s | ~5M | 0.012 | 5.177 | no (shifted again) |
+## Ground Truth As Of March 18, 2026
 
-All val losses at 80s are within ~0.08 of each other. Rankings have not stabilized. Need longer runs.
+### 1B feasibility
 
----
+Status: `done`
 
-## Decision Process
+Evidence from `results/exp0_1b_feasibility/metrics.json`:
+- completed without OOM
+- `501,760` tokens seen
+- `245` steps
+- `93.3s` active training time
+- `160.6s` wall time
+- approximate throughput: `5.38k` tokens/sec during active training
+- peak VRAM was not captured and must be recorded in the next 1B run
 
-**Now:** design experiments, pick variables, set token budgets, define "stable" concretely.
-**After data:** pick winners, lock values, move to next variable.
+Implication:
+- 1B training is feasible on this GPU
+- throughput is no longer unknown
+- future 1B confirmation runs should always log peak GPU memory
 
-**"Ranking stabilized" means:** the same top-2 candidates win at both N tokens and 2N tokens. If top candidates swap between adjacent budgets, the proxy is too short.
+### Existing LR evidence
 
----
+Status: `done`
 
-## Experiment Tracking
+Observed ranking movement:
+- 5s: best around `0.007-0.008`
+- 10s: best around `0.007`
+- 20s: best around `0.006-0.007`
+- 45s validation: `0.016` slightly beats `0.012`, `0.010` trails
 
-- `experiments.jsonl` — one line per run, append-only
-- `decisions.md` — one entry per completed sweep: winner + reasoning + next step
-- Evaluation: lowest area-under-val-loss (after warmup) → lowest final val loss → fastest wall-clock
-- Reject if: loss spikes, NaNs, instability, constant clipping
+Interpretation:
+- the ranking has moved multiple times already
+- 45s evidence is useful but not decisive
+- LR is not locked
 
----
+## Phase 0: Research Hygiene And Ground Truth
 
-# Experiments To Run Now
+Status: `done`
 
-## EXP-0: 1B Feasibility Check (do this first, ~2 min)
+Tasks:
+1. Sync existing queue files into `optimization/experiments.jsonl`.
+2. Record one decision note for the 5s/10s/20s/45s LR evidence.
+3. Carry forward the completed 1B feasibility result.
+4. Explicitly track that the next 1B run must capture peak VRAM.
 
-**Question:** Can 1B (OneBConfig) train on L40S 48GB? What's the tokens/sec?
+Acceptance criteria:
+- `experiments.jsonl` is non-empty
+- `decisions.md` contains a completed LR decision note
+- roadmap no longer claims 1B fit or throughput are unknown
+
+## Phase 1: Lock The LR Proxy Before More Tuning
+
+Status: `ready to run`
+
+Question:
+- what is the shortest proxy budget that preserves LR ranking well enough to choose candidates for 1B confirmation?
+
+Fixed setup:
+- config: `LLMConfig`
+- dataset: `./processed_data/pretrain_1B`
+- `batch_size=4`
+- `gradient_accumulation_steps=1`
+- default 88M tokenizer and sequence length
+- seeds: `42`, `137`
+
+Candidate set:
+- `0.008 / 0.002`
+- `0.012 / 0.003`
+- `0.016 / 0.004`
+- `0.024 / 0.006`
+
+Run layout:
+- 8 runs total
+- save to `results/exp1_lr_8M/<exp_id>/`
+
+Commands:
 
 ```bash
-python train_llm.py \
-  --config_class configs.llm_config.OneBConfig \
-  --train_tokens 500000 \
-  --dataset_path ./processed_data/pretrain_1B
+python train_llm.py --muon_lr 0.008 --adamw_lr 0.002 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 42 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.008_s42
+python train_llm.py --muon_lr 0.012 --adamw_lr 0.003 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 42 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.012_s42
+python train_llm.py --muon_lr 0.016 --adamw_lr 0.004 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 42 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.016_s42
+python train_llm.py --muon_lr 0.024 --adamw_lr 0.006 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 42 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.024_s42
+python train_llm.py --muon_lr 0.008 --adamw_lr 0.002 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 137 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.008_s137
+python train_llm.py --muon_lr 0.012 --adamw_lr 0.003 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 137 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.012_s137
+python train_llm.py --muon_lr 0.016 --adamw_lr 0.004 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 137 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.016_s137
+python train_llm.py --muon_lr 0.024 --adamw_lr 0.006 --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed 137 --dataset_path ./processed_data/pretrain_1B --output_dir results/exp1_lr_8M/lr0.024_s137
 ```
 
-**Why first:** if 1B doesn't fit, everything changes. If it's 5x slower than expected, compute budget changes. Takes 1-2 minutes.
+Scoring rule:
+1. lowest mean validation loss after warmup across milestones
+2. lowest final validation loss
+3. fastest tokens/sec
 
-**Record:** tokens/sec, memory usage, whether it completes without OOM.
-
-## EXP-1: LR Ranking Stability (88M, 8M tokens, ~2-3 min each)
-
-**Question:** Does the LR ranking stabilize when we go from 5M tokens (80s) to 8M tokens?
-
-**Candidates:** top 4 from 80s data: 0.008, 0.012, 0.018, 0.024 (the default LLMConfig LR)
+Analysis command:
 
 ```bash
-# Run each with 2 seeds
-python train_llm.py --muon_lr 0.008 --adamw_lr 0.002 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
-python train_llm.py --muon_lr 0.012 --adamw_lr 0.003 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
-python train_llm.py --muon_lr 0.018 --adamw_lr 0.0045 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
-python train_llm.py --muon_lr 0.024 --adamw_lr 0.006 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
+python optimization/analyze_sweep.py results/exp1_lr_8M
 ```
 
-**Decision rule:** if top-2 at 8M match top-2 at 5M (80s), ranking is stable → lock LR.
-If ranking shifts → run top 3 at 20M tokens.
+Promotion rule:
+- promote the top two candidates only if top-two membership matches across both seeds
 
-## EXP-2: LR Confirmation at 20M tokens (only if EXP-1 ranking shifts)
+Acceptance criteria:
+- eight runs complete
+- one ranked summary exists
+- if top-two membership is unstable, LR remains unlocked
 
-**Candidates:** top 3 from EXP-1.
-**Token budget:** 20M tokens (~5-6 min each).
-**Decision rule:** same — do top-2 match EXP-1? If yes, lock LR.
+## Phase 2: Confirm LR At A Longer Budget Only If Needed
 
-## EXP-3: Quick Transfer Check (88M vs 1B ranking)
+Status: `ready to run`
 
-**Question:** does the 88M LR winner also win at 1B?
+Trigger:
+- run only if Phase 1 top-two membership is unstable or the winner is within `<=0.01` val loss of the runner-up
 
-**Method:** run the 88M winner AND runner-up at 1B for 500K-1M tokens (minimum to get a val loss reading). If rankings match, we trust the proxy for future experiments.
+Tasks:
+1. take the top three Phase 1 candidates to `20M` tokens at seed `42`
+2. if top-two separation is still within `<=0.01`, rerun the top two at seed `137`
+3. lock LR only if the same top-two set persists from `8M` to `20M`
+4. if no stable winner emerges, stop recipe sweeps and publish proxy instability as the result
 
-**Why early:** this validates or invalidates the entire "screen at 88M, confirm at 1B" strategy. Do it NOW, not in week 3-4.
+Command template:
 
-## EXP-4: Warmup Sweep (after LR is locked)
+```bash
+python train_llm.py --muon_lr <MUON_LR> --adamw_lr <ADAMW_LR> --train_tokens 20000000 --batch_size 4 --gradient_accumulation_steps 1 --seed <SEED> --dataset_path ./processed_data/pretrain_1B --output_dir results/exp2_lr_20M/<exp_id>
+```
 
-**Variable:** `warmup_ratio` at locked LR
-**Values:** 0.0, 0.005, 0.01, 0.02
-**Token budget:** 8M tokens each at 88M
-**Note:** current 88M default is warmup_ratio=0.0. The OneBConfig default is 0.01. There's a gap here — we need to know which is better.
+Acceptance criteria:
+- either LR is locked with written evidence, or proxy instability is explicitly declared
 
-## EXP-5: Weight Decay Sweep (after warmup is locked)
+## Phase 3: Validate 88M To 1B Transfer Immediately
 
-**Variable:** `weight_decay`
-**Values:** 0.05, 0.1, 0.15, 0.2
-**Token budget:** 8M tokens each at 88M, confirm winner at 20M
+Status: `ready to run` after LR lock
 
----
+Question:
+- does the 88M LR winner transfer to 1B at all?
 
-# Experiments To Design Later (after optimization is locked)
+Tasks:
+1. run the locked 88M winner at 1B for `500k` tokens
+2. run the 88M runner-up at 1B for `500k` tokens
+3. save to `results/exp3_1b_transfer/<candidate>/`
+4. record final val loss, training time, wall time, tokens seen, and peak GPU memory
+5. if the two runs tie within `<=0.01`, run both again at `1M` tokens
+6. if transfer fails, rewrite the remaining roadmap to use 1B-first screening
 
-## Architecture experiments
+Command template:
 
-Only test changes with published evidence AND that differ from current architecture:
+```bash
+python train_llm.py --config_class configs.llm_config.OneBConfig --muon_lr <MUON_LR> --adamw_lr <ADAMW_LR> --train_tokens 500000 --seed <SEED> --dataset_path ./processed_data/pretrain_1B --output_dir results/exp3_1b_transfer/<exp_id>
+```
 
-| Experiment | Change | Current → New | Lines of code |
-|-----------|--------|---------------|---------------|
-| ARCH-001 | SwiGLU FFN | Squared ReLU → SwiGLU | ~15 lines |
-| ARCH-002 | Residual attention | No cross-layer → residual attn weights | ~20 lines |
-| ARCH-003 | Embedding scale | `× √d_model` → remove or replace | ~2 lines |
-| ARCH-004 | Residual scaling | Uniform → `1/√n_layers` | ~5 lines |
+Acceptance criteria:
+- yes/no answer on whether the 88M LR proxy is trustworthy
 
-**Removed from previous roadmap:**
-- ~~QK-norm~~ (already in the model)
-- ~~Alternative attention patterns~~ (too vague, no clear single change to test)
-- ~~Norm placement~~ (already using pre-norm RMSNorm, the modern standard)
+## Phase 4: Unblock Recipe Sweeps
 
-## Scaling experiments
+Status: `done`
 
-These happen naturally as part of optimization:
-- SCALE-001: 88M→1B transfer = EXP-3 above (moved earlier)
-- SCALE-002: optimal LR vs token budget = already visible in existing 5s/10s/20s/80s data
+Completed infra:
+- `train_llm.py` supports overrides for `warmup_ratio`, `weight_decay`, `schedule_type`, and `muon_momentum`
+- training metrics now include experiment config, throughput, and peak GPU memory
+- `optimization/analyze_sweep.py` can rank sweep outputs
 
----
+Check command:
 
-# Content Strategy
+```bash
+python train_llm.py --help
+```
 
-| When | Post | Expected reach |
-|------|------|---------------|
-| Today | "LR ranking shifts with training duration — 5s vs 80s results" | X: 2k-5k |
-| After EXP-1 | "Does the LR winner stabilize at 8M tokens?" + auto-research tool mention | X: 3k-8k |
-| After EXP-3 | "Can 88M experiments predict 1B results?" (the scaling question) | X: 5k-15k |
-| After optimization | "Best training recipe for a 1B model on $X of compute" | X: 10k-30k |
-| After architecture | "SwiGLU vs Squared ReLU at 1B — which FFN wins?" | X: 5k-15k |
+Dry-run validation target:
+- confirm override values appear in the logged config before starting any Phase 5 sweep
 
-View estimates based on actual X analytics (2k-15k daily, viral spikes to 50-84k). Research updates are niche content — realistic range is 2k-8k per post, with occasional 15k+ breakouts on scaling-law or cost-efficiency angles.
+## Phase 5: Tune The Recipe One Knob At A Time
 
-**Novita ask for $1,000:** after 15-20 posts with mentions, cumulative 50k-100k views across platforms. Send engagement report.
+Status: `ready to run` after LR lock
 
----
+Rules:
+- do not change multiple knobs at once
+- use `8M` as the first budget
+- use seeds `42` and `137`
+- treat `<=0.01` val-loss gaps as ties unless longer confirmation breaks them
 
-# Practical Rules
+### Task Set A: Warmup Sweep
 
-1. Never change multiple knobs at once.
-2. 88M for screening, 1B for confirmation.
-3. Ranking = "stable" when top-2 match at N and 2N tokens.
-4. Record everything in experiments.jsonl. Decisions in decisions.md.
-5. Every experiment = a post. Failures are content.
-6. Use the auto-research tool to run batches when possible — it's the product.
+Values:
+- `0.0`
+- `0.005`
+- `0.01`
+- `0.02`
 
----
+Command template:
 
-# Execution Order
+```bash
+python train_llm.py --muon_lr <LOCKED_MUON_LR> --adamw_lr <LOCKED_ADAMW_LR> --warmup_ratio <VALUE> --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed <SEED> --dataset_path ./processed_data/pretrain_1B --output_dir results/exp4_warmup/<exp_id>
+```
 
-1. ☐ **EXP-0:** 1B feasibility check on L40S (2 min)
-2. ☐ **EXP-1:** LR at 8M tokens, 4 candidates (10-15 min)
-3. ☐ **Post:** LR ranking shift results (today)
-4. ☐ **EXP-2:** LR at 20M tokens if needed (15-20 min)
-5. ☐ **EXP-3:** Quick 88M→1B transfer check (5-15 min)
-6. ☐ **Post:** "Can 88M predict 1B?" results
-7. ☐ **EXP-4:** Warmup sweep at locked LR (10-15 min)
-8. ☐ **EXP-5:** Weight decay sweep (10-15 min)
-9. ☐ Lock full optimization recipe
-10. ☐ Implement ARCH-001 (SwiGLU) behind config flag
-11. ☐ Test at 88M, confirm at 1B if it wins
-12. ☐ Full 1B training with best recipe
+### Task Set B: Weight Decay Sweep
+
+Values:
+- `0.05`
+- `0.1`
+- `0.15`
+- `0.2`
+
+Command template:
+
+```bash
+python train_llm.py --muon_lr <LOCKED_MUON_LR> --adamw_lr <LOCKED_ADAMW_LR> --warmup_ratio <LOCKED_WARMUP> --weight_decay <VALUE> --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed <SEED> --dataset_path ./processed_data/pretrain_1B --output_dir results/exp5_weight_decay/<exp_id>
+```
+
+### Task Set C: Muon Momentum
+
+Run only after LR, warmup, and weight decay are locked.
+
+Values:
+- `0.90`
+- `0.95`
+- `0.98`
+
+Command template:
+
+```bash
+python train_llm.py --muon_lr <LOCKED_MUON_LR> --adamw_lr <LOCKED_ADAMW_LR> --warmup_ratio <LOCKED_WARMUP> --weight_decay <LOCKED_WEIGHT_DECAY> --muon_momentum <VALUE> --train_tokens 8000000 --batch_size 4 --gradient_accumulation_steps 1 --seed <SEED> --dataset_path ./processed_data/pretrain_1B --output_dir results/exp6_momentum/<exp_id>
+```
+
+Acceptance criteria:
+- final recipe is a tuple, not prose:
+  - `muon_lr`
+  - `adamw_lr`
+  - `warmup_ratio`
+  - `weight_decay`
+  - `muon_momentum`
+  - `schedule_type`
+
+## Phase 6: Architecture Work Only After The Recipe Is Stable
+
+Status: `blocked by recipe lock`
+
+Execution order:
+1. `ARCH-001` SwiGLU
+2. `ARCH-003` embedding scale removal
+3. `ARCH-004` residual scaling
+4. `ARCH-002` residual attention
+
+Rule:
+- every architecture change must be behind a config flag
+- run a short sanity check first
+- run an `8M` proxy second
+- confirm at 1B only if it wins by at least `0.5%` relative val-loss improvement or clearly improves stability
+
+## Required Checks Before Declaring A Sweep Complete
+
+1. every completed run has a matching `experiments.jsonl` line
+2. every completed sweep has a `decisions.md` entry
+3. the ranked output from `optimization/analyze_sweep.py` is saved or copied into the decision note
+4. if a sweep fails to transfer, the roadmap is updated before the next sweep starts
+
+## Immediate Next Actions
+
+1. Run Phase 1 8M LR sweep with seeds `42` and `137`
+2. Rank the results with `optimization/analyze_sweep.py`
+3. Either lock LR or trigger Phase 2
+4. Run Phase 3 immediately after LR lock

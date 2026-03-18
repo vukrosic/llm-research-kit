@@ -240,5 +240,8 @@ logs_debug/
 # gemini-cli settings
 .gemini/
 
+# Local private workspace
+my-life/
+
 # GitHub App credentials
 gha-creds-*.json

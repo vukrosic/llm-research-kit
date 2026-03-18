@@ -46,6 +46,9 @@ class LLMConfig:
     dropout: float = 0.0
     grad_clip: float = 1.0
     use_amp: bool = True
+
+    # Reproducibility
+    seed: int = 42
     
     # Logging
     log_milestones: Tuple[int, ...] = (100, 500, 1000)
@@ -86,5 +89,7 @@ class OneBConfig(LLMConfig):
     dropout: float = 0.0
     grad_clip: float = 1.0
     use_amp: bool = True
+
+    seed: int = 42
 
     log_milestones: Tuple[int, ...] = (10, 50, 100, 250, 500, 1000)

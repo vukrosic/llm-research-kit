@@ -18,6 +18,10 @@ from training.evaluation import evaluate_model
 from utils.helpers import set_seed, format_time
 
 
+def _safe_mean(values):
+    return sum(values) / len(values) if values else None
+
+
 class EarlyStopping:
     """Early stopping handler"""
     def __init__(self, patience: int = 30, min_delta: float = 0.001):
@@ -440,7 +444,7 @@ def train_minimal_llm(
     # ============================================
     # 1. Initialize model with fixed seed
     # ============================================
-    set_seed(42)
+    set_seed(getattr(config, "seed", 42))
     model = MinimalLLM(config)
     model = model.to(device)
     
@@ -531,7 +535,7 @@ def train_minimal_llm(
     # ============================================
     # 8. Reset RNG for reproducible training
     # ============================================
-    set_seed(42)
+    set_seed(getattr(config, "seed", 42))
     
     setup_time = time.time() - setup_start
     print(f"⚙️ Setup & Compilation complete in {setup_time:.2f}s")
@@ -544,6 +548,7 @@ def train_minimal_llm(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
     train_start = time.time()
     
     results = train_model(
@@ -589,8 +594,29 @@ def train_minimal_llm(
         'actual_steps': step,
         'tokens_seen': tokens_seen,
         'train_tokens': config.train_tokens,
+        'tokens_per_second': (tokens_seen / total_training_time) if total_training_time > 0 else None,
+        'experiment_config': {
+            'seed': getattr(config, 'seed', 42),
+            'muon_lr': config.muon_lr,
+            'adamw_lr': config.adamw_lr,
+            'muon_momentum': config.muon_momentum,
+            'warmup_ratio': config.warmup_ratio,
+            'weight_decay': config.weight_decay,
+            'schedule_type': getattr(config, 'schedule_type', 'constant'),
+            'batch_size': config.batch_size,
+            'gradient_accumulation_steps': config.gradient_accumulation_steps,
+            'max_seq_len': config.max_seq_len,
+            'model_config': config.__class__.__name__,
+        },
+        'summary': {
+            'mean_val_loss_after_warmup': _safe_mean(metrics_history['val_losses'][1:]) if len(metrics_history['val_losses']) > 1 else _safe_mean(metrics_history['val_losses']),
+            'final_val_loss': final_eval['val_loss'],
+        },
         'history': metrics_history,
     }
+    if torch.cuda.is_available():
+        metrics_data['peak_gpu_memory_bytes'] = torch.cuda.max_memory_allocated()
+        metrics_data['peak_gpu_memory_gb'] = torch.cuda.max_memory_allocated() / (1024 ** 3)
     with open(metrics_file, 'w') as f:
         json.dump(metrics_data, f, indent=2)
     print(f"   📊 Metrics saved to {metrics_file}")

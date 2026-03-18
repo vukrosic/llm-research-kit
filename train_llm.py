@@ -215,6 +215,10 @@ def main():
     parser.add_argument("--save_every", type=int, help="Override save_every steps")
     parser.add_argument("--batch_size", type=int, help="Override batch_size")
     parser.add_argument("--gradient_accumulation_steps", type=int, help="Override gradient_accumulation_steps")
+    parser.add_argument("--warmup_ratio", type=float, help="Override warmup_ratio")
+    parser.add_argument("--weight_decay", type=float, help="Override weight_decay")
+    parser.add_argument("--schedule_type", type=str, choices=["constant", "linear", "cosine"], help="Override schedule_type")
+    parser.add_argument("--muon_momentum", type=float, help="Override muon_momentum")
     parser.add_argument("--log_every", type=int, default=100, help="Logging frequency in steps")
     parser.add_argument("--warmup", type=str, default="true", help="Whether to perform untimed compilation warmup (true/false)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
@@ -261,6 +265,15 @@ def main():
         config.gradient_accumulation_steps = args.gradient_accumulation_steps
     if args.log_every is not None:
         config.log_every = args.log_every
+    if args.warmup_ratio is not None:
+        config.warmup_ratio = args.warmup_ratio
+    if args.weight_decay is not None:
+        config.weight_decay = args.weight_decay
+    if args.schedule_type is not None:
+        config.schedule_type = args.schedule_type
+    if args.muon_momentum is not None:
+        config.muon_momentum = args.muon_momentum
+    config.seed = args.seed
     
     # Define custom milestones for validation curves and autosetup logging
     # For 8M benchmark (approx 488 steps)
