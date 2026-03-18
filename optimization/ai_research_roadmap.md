@@ -2,519 +2,191 @@
 
 ## Goal
 
-- Train a stable ~1B dense GPT-style model with `OneBConfig`.
-- Use it as the first step toward a GPT-3-class training stack.
-- Optimize loss per unit compute, not loss per step.
-- Keep experiments clean enough to attribute gains correctly.
+Build the best possible 1B dense GPT model — matching or beating published 1B baselines (TinyLlama, Pythia-1B, OLMo-1B). Use it to prove the auto-research tool works. Every experiment = a post. Every result = content.
 
-## Core Principle
+**Hard deadlines:**
+- March 25: one publishable result for professor cold-emails
+- May 1: visa expires — need concrete research portfolio by then
 
-Separate optimization research from architecture research until the baseline is strong. If both change together, attribution is weak.
+## Compute
 
-## Overall Program
+| Resource | Value |
+|----------|-------|
+| Balance | $100 → ~357 hours at $0.28/hr |
+| GPU | 1× L40S 48GB |
+| 88M throughput | ~60k tokens/sec (measured) |
+| 1B throughput | **unknown — must measure first** |
+| 1B memory fit | **unknown — must verify first** |
 
-Run two tracks:
+## Current Model Architecture
 
-1. Optimization track
-2. Architecture track
+| Component | Implementation |
+|-----------|---------------|
+| Attention | Merged QKVO projection, GQA (4 KV heads) |
+| QK-norm | ✅ RMSNorm on Q and K (already present) |
+| Positional | RoPE (base=10000) |
+| FFN | Squared ReLU (Primer-style) |
+| Normalization | Pre-norm RMSNorm |
+| Embeddings | Tied input/output, scaled by √d_model |
 
-The optimization track comes first. The architecture track starts only after the baseline recipe is reasonably stable.
+## Existing LR Data (88M model)
 
-## Optimization Track
+| Duration | Tokens | Best LR | Val Loss | Ranking Stable? |
+|----------|--------|---------|----------|-----------------|
+| 5s | ~300K | 0.008 | 6.764 | — |
+| 10s | ~620K | 0.007 | 6.513 | no (shifted) |
+| 20s | ~1.2M | 0.006 | 6.263 | no (shifted) |
+| 80s | ~5M | 0.012 | 5.177 | no (shifted again) |
 
-### Objective
+All val losses at 80s are within ~0.08 of each other. Rankings have not stabilized. Need longer runs.
 
-Find the training recipe with the best long-run validation loss at acceptable stability and throughput.
+---
 
-### Research Loop
+## Decision Process
 
-For each knob:
+**Now:** design experiments, pick variables, set token budgets, define "stable" concretely.
+**After data:** pick winners, lock values, move to next variable.
 
-1. Ask one narrow question.
-2. Use the cheapest proxy that preserves long-run ranking.
-3. Keep all other settings fixed.
-4. Promote only the top 1-2 candidates to a longer confirmation run.
-5. Record the decision and move to the next knob.
+**"Ranking stabilized" means:** the same top-2 candidates win at both N tokens and 2N tokens. If top candidates swap between adjacent budgets, the proxy is too short.
 
-### Current Baseline Priors
+---
 
-From `OneBConfig`:
+## Experiment Tracking
 
-- `muon_lr = 0.008`
-- `adamw_lr = 0.0015`
-- `muon_momentum = 0.95`
-- `warmup_ratio = 0.01`
-- `schedule_type = cosine`
-- `weight_decay = 0.1`
-- `dropout = 0.0`
-- `grad_clip = 1.0`
+- `experiments.jsonl` — one line per run, append-only
+- `decisions.md` — one entry per completed sweep: winner + reasoning + next step
+- Evaluation: lowest area-under-val-loss (after warmup) → lowest final val loss → fastest wall-clock
+- Reject if: loss spikes, NaNs, instability, constant clipping
 
-Current optimizer split:
+---
 
-- Muon for most 2D weight matrices
-- AdamW for embeddings, norms, and remaining parameters
+# Experiments To Run Now
 
-This split is defined in `training/trainer.py`.
+## EXP-0: 1B Feasibility Check (do this first, ~2 min)
 
-## Optimization Priority Order
+**Question:** Can 1B (OneBConfig) train on L40S 48GB? What's the tokens/sec?
 
-Tune in this order:
+```bash
+python train_llm.py \
+  --config_class configs.llm_config.OneBConfig \
+  --train_tokens 500000 \
+  --dataset_path ./processed_data/pretrain_1B
+```
 
-1. learning rate
-2. warmup ratio
-3. AdamW-to-Muon LR ratio
-4. weight decay
-5. Muon momentum
-6. effective batch size scaling
-7. schedule type
-8. grad clip
-9. dropout
+**Why first:** if 1B doesn't fit, everything changes. If it's 5x slower than expected, compute budget changes. Takes 1-2 minutes.
 
-The rule is simple:
+**Record:** tokens/sec, memory usage, whether it completes without OOM.
 
-- optimization dynamics first
-- regularization second
-- low-leverage cleanup last
+## EXP-1: LR Ranking Stability (88M, 8M tokens, ~2-3 min each)
 
-## Learning Rate Research
+**Question:** Does the LR ranking stabilize when we go from 5M tokens (80s) to 8M tokens?
 
-### Question
+**Candidates:** top 4 from 80s data: 0.008, 0.012, 0.018, 0.024 (the default LLMConfig LR)
 
-Which `muon_lr` and `adamw_lr` pair gives the best long-run loss reduction per unit time without causing instability?
+```bash
+# Run each with 2 seeds
+python train_llm.py --muon_lr 0.008 --adamw_lr 0.002 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
+python train_llm.py --muon_lr 0.012 --adamw_lr 0.003 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
+python train_llm.py --muon_lr 0.018 --adamw_lr 0.0045 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
+python train_llm.py --muon_lr 0.024 --adamw_lr 0.006 --train_tokens 8000000 --seed 42 --output_dir results/exp1_lr_8M
+```
 
-### Why It Comes First
+**Decision rule:** if top-2 at 8M match top-2 at 5M (80s), ranking is stable → lock LR.
+If ranking shifts → run top 3 at 20M tokens.
 
-- LR is the highest-leverage hyperparameter.
-- A bad LR can waste a full long run.
-- Most other settings interact with LR.
+## EXP-2: LR Confirmation at 20M tokens (only if EXP-1 ranking shifts)
 
-### Main Risk
+**Candidates:** top 3 from EXP-1.
+**Token budget:** 20M tokens (~5-6 min each).
+**Decision rule:** same — do top-2 match EXP-1? If yes, lock LR.
 
-The best LR in the first few hundred steps is often too high for long training. Short sweeps should preserve ranking, not just maximize early speed.
+## EXP-3: Quick Transfer Check (88M vs 1B ranking)
 
-### Proxy Design
+**Question:** does the 88M LR winner also win at 1B?
 
-Use a two-stage process:
+**Method:** run the 88M winner AND runner-up at 1B for 500K-1M tokens (minimum to get a val loss reading). If rankings match, we trust the proxy for future experiments.
 
-1. screening run: `200_000_000` to `500_000_000` tokens
-2. longer transfer check: `2_000_000_000` to `5_000_000_000` tokens
+**Why early:** this validates or invalidates the entire "screen at 88M, confirm at 1B" strategy. Do it NOW, not in week 3-4.
 
-Do not use tiny sweeps like `1M` or `20M` tokens if the goal is long-run transfer on a 1B model. They mostly measure very early acceleration.
+## EXP-4: Warmup Sweep (after LR is locked)
 
-### What Must Stay Fixed
+**Variable:** `warmup_ratio` at locked LR
+**Values:** 0.0, 0.005, 0.01, 0.02
+**Token budget:** 8M tokens each at 88M
+**Note:** current 88M default is warmup_ratio=0.0. The OneBConfig default is 0.01. There's a gap here — we need to know which is better.
 
-- model shape
-- global batch size
-- sequence length
-- dataset mixture
-- precision
-- optimizer assignment
-- warmup ratio
-- scheduler shape
+## EXP-5: Weight Decay Sweep (after warmup is locked)
 
-### Initial Sweep
+**Variable:** `weight_decay`
+**Values:** 0.05, 0.1, 0.15, 0.2
+**Token budget:** 8M tokens each at 88M, confirm winner at 20M
 
-Keep the current AdamW-to-Muon ratio near the present prior:
+---
 
-- `0.0015 / 0.008 = 0.1875`
+# Experiments To Design Later (after optimization is locked)
 
-Sweep:
+## Architecture experiments
 
-- `muon_lr = 0.004`, `0.006`, `0.008`, `0.010`, `0.012`
-- `adamw_lr = 0.1875 * muon_lr`
+Only test changes with published evidence AND that differ from current architecture:
 
-So the first five candidates are:
+| Experiment | Change | Current → New | Lines of code |
+|-----------|--------|---------------|---------------|
+| ARCH-001 | SwiGLU FFN | Squared ReLU → SwiGLU | ~15 lines |
+| ARCH-002 | Residual attention | No cross-layer → residual attn weights | ~20 lines |
+| ARCH-003 | Embedding scale | `× √d_model` → remove or replace | ~2 lines |
+| ARCH-004 | Residual scaling | Uniform → `1/√n_layers` | ~5 lines |
 
-- `(0.004, 0.00075)`
-- `(0.006, 0.001125)`
-- `(0.008, 0.0015)`
-- `(0.010, 0.001875)`
-- `(0.012, 0.00225)`
+**Removed from previous roadmap:**
+- ~~QK-norm~~ (already in the model)
+- ~~Alternative attention patterns~~ (too vague, no clear single change to test)
+- ~~Norm placement~~ (already using pre-norm RMSNorm, the modern standard)
 
-Then:
+## Scaling experiments
 
-1. take the best 1-2 candidates
-2. refine locally around the winner
-3. confirm at `200M` tokens
+These happen naturally as part of optimization:
+- SCALE-001: 88M→1B transfer = EXP-3 above (moved earlier)
+- SCALE-002: optimal LR vs token budget = already visible in existing 5s/10s/20s/80s data
 
-### Interaction Risk
+---
 
-`muon_lr` and `adamw_lr / muon_lr` likely interact. Use one of these:
+# Content Strategy
 
-1. small 2D grid
-2. sequential sweeps with a re-check of the LR winner after the ratio sweep
+| When | Post | Expected reach |
+|------|------|---------------|
+| Today | "LR ranking shifts with training duration — 5s vs 80s results" | X: 2k-5k |
+| After EXP-1 | "Does the LR winner stabilize at 8M tokens?" + auto-research tool mention | X: 3k-8k |
+| After EXP-3 | "Can 88M experiments predict 1B results?" (the scaling question) | X: 5k-15k |
+| After optimization | "Best training recipe for a 1B model on $X of compute" | X: 10k-30k |
+| After architecture | "SwiGLU vs Squared ReLU at 1B — which FFN wins?" | X: 5k-15k |
 
-Preferred first pass:
+View estimates based on actual X analytics (2k-15k daily, viral spikes to 50-84k). Research updates are niche content — realistic range is 2k-8k per post, with occasional 15k+ breakouts on scaling-law or cost-efficiency angles.
 
-- `muon_lr = 0.006`, `0.008`, `0.010`
-- ratio = `0.10`, `0.1875`, `0.25`
+**Novita ask for $1,000:** after 15-20 posts with mentions, cumulative 50k-100k views across platforms. Send engagement report.
 
-This 3x3 grid costs about the same as separate coarse LR and ratio sweeps and covers the joint space better.
+---
 
-### How To Rank Candidates
+# Practical Rules
 
-Primary metric:
+1. Never change multiple knobs at once.
+2. 88M for screening, 1B for confirmation.
+3. Ranking = "stable" when top-2 match at N and 2N tokens.
+4. Record everything in experiments.jsonl. Decisions in decisions.md.
+5. Every experiment = a post. Failures are content.
+6. Use the auto-research tool to run batches when possible — it's the product.
 
-- validation loss trajectory over the run
+---
 
-Practical ranking:
+# Execution Order
 
-- lowest area under the validation-loss curve after warmup
-- then lowest final validation loss
-- then fastest wall-clock if tied
-
-Reject candidates that show:
-
-- repeated loss spikes
-- NaNs
-- clear post-warmup instability
-- heavy clipping almost every step
-
-### Schedule Floor
-
-For long cosine runs, define the minimum LR explicitly. The default prior is:
-
-- `min_lr = 0.1 * peak_lr`
-
-Treat this as part of the training recipe, not an implicit detail.
-
-## Warmup Research
-
-### Question
-
-What `warmup_ratio` gives the best stable long-run training for the chosen LR?
-
-### Sweep
-
-After rough LR is chosen, test:
-
-- `0.002`
-- `0.005`
-- `0.01`
-- `0.02`
-
-### Why It Matters
-
-Warmup often determines whether an LR is merely fast early or usable for long training.
-
-## AdamW-to-Muon LR Ratio Research
-
-### Question
-
-What ratio between `adamw_lr` and `muon_lr` works best for this optimizer split?
-
-### Sweep
-
-Hold `muon_lr` fixed near the chosen value and test ratio values such as:
-
-- `0.10`
-- `0.15`
-- `0.20`
-- `0.25`
-
-### Why It Matters
-
-The two optimizers update different parameter groups. This ratio still matters after the main LR is set.
-
-## Weight Decay Research
-
-### Question
-
-What `weight_decay` gives the best medium- and long-run validation loss?
-
-### Sweep
-
-Test:
-
-- `0.05`
-- `0.1`
-- `0.15`
-- `0.2`
-
-### Note
-
-Weight decay often matters more later in training, so confirm it on a longer run.
-
-## Muon Momentum Research
-
-### Question
-
-What `muon_momentum` is best once LR is reasonably tuned?
-
-### Sweep
-
-Test:
-
-- `0.90`
-- `0.95`
-- `0.98`
-
-### Note
-
-Lower priority than LR and warmup, but still worth checking once the baseline is stable.
-
-## Batch Size Scaling Research
-
-### Question
-
-How does the best training recipe change when effective batch size changes?
-
-### Rule
-
-If effective batch size changes, re-check:
-
-- LR
-- warmup
-- possibly weight decay
-
-Batch changes usually require retuning.
-
-## Schedule Type Research
-
-### Recommendation
-
-Keep `cosine` as the default long-run prior unless evidence suggests otherwise.
-
-`constant` may be fine for short probes, but its ranking may not transfer to a long cosine run.
-
-### Research Tool
-
-For screening and transfer experiments, also consider a warmup-stable-decay schedule. A stable middle phase makes different token budgets easier to compare because the schedule horizon changes less aggressively than with cosine.
-
-Use WSD as a research tool if ranking transfer under cosine looks noisy. Keep cosine as the production default unless WSD clearly wins in long runs.
-
-## Grad Clip Research
-
-### Recommendation
-
-Leave `grad_clip = 1.0` unless clipping happens very often.
-
-If clipping is frequent, first suspect:
-
-- LR too high
-- warmup too short
-
-Do not tune clip first.
-
-## Dropout Research
-
-### Recommendation
-
-Keep `dropout = 0.0` as the initial prior for dense GPT pretraining at this scale.
-
-Only tune dropout if validation clearly decouples from training loss.
-
-## Optimization Decision Standard
-
-A short run is useful only if it preserves candidate ranking into a longer run.
-
-General rule:
-
-- if top candidates keep swapping rank between nearby milestones, the proxy is too short
-
-The production setting should usually be:
-
-- slightly below the highest aggressive setting that still looks good in the short proxy
-
-not:
-
-- simply the most aggressive setting that wins very early
-
-## Data Strategy
-
-Keep dataset mixture fixed during optimization and architecture comparisons.
-
-Data work is a separate track. At minimum, document:
-
-- dataset sources
-- mixture weights
-- filtering rules
-- dedup policy
-- tokenizer version
-
-Do not tune data mixture in the middle of optimizer or architecture sweeps.
-
-## Architecture Track
-
-### Objective
-
-Research architectural changes that improve validation loss at matched compute and acceptable system cost.
-
-### Main Principle
-
-Architecture should be evaluated at fixed compute, not just fixed steps or fixed parameter count.
-
-The real question is whether it improves loss per dollar or per FLOP.
-
-### Requirements For A Credible Win
-
-A new architecture should clear all three:
-
-1. better validation loss at matched training compute
-2. acceptable throughput and memory cost
-3. not dramatically harder to tune
-
-If it wins only after special handling or significantly worse throughput, it probably does not get you to GPT-3-class capability faster in practice.
-
-## Architecture Research Loop
-
-For each idea:
-
-1. define one minimal mechanism
-2. verify it trains stably
-3. compare against the baseline at matched compute
-4. only then expand the design space
-
-Start with the smallest version that could plausibly work.
-
-## Architecture Evaluation Ladder
-
-Use a three-stage ladder:
-
-1. small-model sanity check
-2. medium proxy experiment
-3. 1B confirmation run
-
-### Stage 1: small-model sanity check
-
-Question:
-
-- does the idea train at all?
-
-Check for:
-
-- NaNs
-- activation blowups
-- memory regressions
-- throughput collapse
-- implementation bugs
-
-### Stage 2: medium proxy
-
-Question: does it beat the baseline at matched compute by enough margin to justify promotion?
-
-Promotion threshold:
-
-- at least ~0.5% validation-loss improvement at matched FLOPs
-- sustained through the last quarter of the run
-- without unacceptable throughput or memory regression
-
-### Stage 3: 1B confirmation
-
-Question: does the gain survive at the target scale?
-
-Only promote the top 1-2 ideas.
-
-## Cross-Layer Attention Research
-
-### Core Question
-
-Does connecting attention across layers improve loss-vs-compute at fixed training recipe?
-
-### Important Constraint
-
-"Connecting attention across layers" is too vague to test directly. Pick one minimal variant.
-
-Possible variants:
-
-- attend to previous-layer KV states
-- gated skip from earlier attention outputs
-- cross-layer residual mixing
-- shared recurrent memory across layers
-
-### Recommended First Variant
-
-Start with one simple gated cross-layer path:
-
-- small parameter increase
-- limited to every N layers, not every layer
-- easy to ablate
-- easy to disable
-
-This is better than dense all-to-all cross-layer attention, which is costlier and harder to interpret.
-
-### First Questions To Answer
-
-- does it train stably?
-- does it improve validation loss at matched compute?
-- how much throughput does it cost?
-- does it require retuning to look good?
-
-### What Must Be Matched Against Baseline
-
-- train tokens
-- optimizer recipe
-- batch size
-- sequence length
-- dataset mix
-- evaluation set
-- parameter count or training FLOPs
-
-If the variant gets extra tuning budget or extra compute without accounting for it, the comparison is not clean.
-
-## Evaluation Beyond Validation Loss
-
-Validation loss is the primary screening metric.
-
-For 1B confirmation runs of architecture variants, also check:
-
-- downstream or few-shot evaluation
-- long-context behavior if relevant
-- throughput and memory at deployment-relevant settings
-
-Two models can match on perplexity and still differ in downstream behavior.
-
-## Bridge Beyond 1B
-
-The 1B baseline is the first target, not the end state.
-
-After a stable 1B recipe exists, add scale-transfer checks:
-
-- train a smaller version such as `125M`
-- train an intermediate version such as `350M`
-- compare how optimal LR scales with width/depth
-- check whether the Muon/AdamW split still makes sense at larger matrix sizes
-- check whether architecture gains grow, shrink, or disappear with scale
-
-The goal is to avoid overfitting the recipe to exactly one model size.
-
-## Cross-Layer Attention Research Questions
-
-- ARCH-001: At fixed compute, does cross-layer attention beat the baseline validation-loss curve?
-- ARCH-002: Is the gain still present after fair LR and warmup tuning for both baseline and variant?
-- ARCH-003: What is the minimal cross-layer mechanism that preserves most of the gain?
-- ARCH-004: Does the gain come from easier optimization early or stronger representation later?
-- ARCH-005: Does it help only short-context pretraining loss, or also long-context behavior?
-
-## Research Sequence
-
-Recommended sequence:
-
-1. stabilize the 1B baseline
-2. tune LR
-3. tune warmup
-4. tune LR ratio or run a small LR/ratio joint sweep
-5. tune weight decay
-6. confirm the baseline over a non-trivial run
-7. run small scale-transfer checks such as `125M` and `350M`
-8. introduce one minimal architecture change
-9. test it on a smaller proxy first
-10. confirm only top architecture ideas on the 1B model
-
-## Practical Rules
-
-- Never change multiple major knobs at once unless the experiment is explicitly about interaction effects.
-- Use short runs for screening and longer runs for confirmation.
-- Favor loss at matched compute over loss at matched steps.
-- Favor ideas that preserve throughput and stability.
-- Record failures, not just wins.
-
-## Immediate Next Steps
-
-1. Use `OneBConfig` as the baseline recipe.
-2. Run either a 3x3 LR/ratio grid or a longer coarse LR sweep at `200M` to `500M` tokens.
-3. Refine around the winner.
-4. Confirm the top 1-2 candidates at `2B` to `5B` tokens.
-5. Tune warmup and weight decay next.
-6. Add small scale-transfer checks.
-7. Only after that, implement one minimal cross-layer attention variant and test it on a smaller proxy.
+1. ☐ **EXP-0:** 1B feasibility check on L40S (2 min)
+2. ☐ **EXP-1:** LR at 8M tokens, 4 candidates (10-15 min)
+3. ☐ **Post:** LR ranking shift results (today)
+4. ☐ **EXP-2:** LR at 20M tokens if needed (15-20 min)
+5. ☐ **EXP-3:** Quick 88M→1B transfer check (5-15 min)
+6. ☐ **Post:** "Can 88M predict 1B?" results
+7. ☐ **EXP-4:** Warmup sweep at locked LR (10-15 min)
+8. ☐ **EXP-5:** Weight decay sweep (10-15 min)
+9. ☐ Lock full optimization recipe
+10. ☐ Implement ARCH-001 (SwiGLU) behind config flag
+11. ☐ Test at 88M, confirm at 1B if it wins
+12. ☐ Full 1B training with best recipe
