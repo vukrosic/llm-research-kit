@@ -56,8 +56,8 @@ def make_loaders(train_ds, val_ds, batch_size, seed=42):
 # ==============================================================
 # Single experiment
 # ==============================================================
-def run_experiment(exp_id, changes=None, train_tokens=600_000, seed=42):
-    """Run one training experiment in eager mode (no torch.compile)."""
+def run_experiment(exp_id, changes=None, train_seconds=5, seed=42):
+    """Run one training experiment with a hard time limit."""
     changes = changes or {}
 
     # Build config
@@ -65,27 +65,17 @@ def run_experiment(exp_id, changes=None, train_tokens=600_000, seed=42):
     for k, v in changes.items():
         if hasattr(config, k):
             setattr(config, k, v)
-    config.train_tokens = train_tokens
+    # Set train_tokens very high — time limit will stop training
+    config.train_tokens = 100_000_000  # 100M, never reached
+    config.max_train_seconds = train_seconds
     config.compile_model = False
     config.__post_init__()
 
-    # Eval settings — minimize overhead for short runs
-    tps_step = config.batch_size * config.max_seq_len
-    est_steps = max(1, train_tokens // tps_step)
-
-    if est_steps < 300:
-        config.eval_milestones = ()
-        config.eval_steps = 10
-        config.log_every = max(5, est_steps // 4)
-    elif est_steps < 1000:
-        config.eval_milestones = (0,)
-        config.eval_steps = 30
-        config.log_every = 50
-    else:
-        config.eval_milestones = tuple(int(est_steps * f) for f in [0, 0.25, 0.5, 0.75])
-        config.eval_steps = 100
-        config.log_every = max(50, est_steps // 20)
+    # Eval settings — no milestone evals, only final eval
+    config.eval_milestones = ()
+    config.eval_steps = 10
     config.eval_every = None
+    config.log_every = 999999  # suppress mid-training logs for speed
 
     # Data
     train_ds, val_ds, vocab_size = get_datasets()
@@ -97,15 +87,17 @@ def run_experiment(exp_id, changes=None, train_tokens=600_000, seed=42):
     model = MinimalLLM(config).to(DEVICE, dtype=torch.bfloat16)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  {exp_id}: {total_params:,} params | batch={config.batch_size} | "
-          f"tokens={train_tokens:,} (~{est_steps} steps)")
+          f"time_limit={train_seconds}s")
 
     # Optimizers
     optimizers = setup_muon_optimizer(model, config)
 
-    # Schedulers
-    total_steps = max(1, train_tokens // (
+    # Schedulers — estimate total steps from time limit
+    tps_est = 50000  # ~50K tokens/sec in eager mode
+    est_tokens = tps_est * train_seconds
+    total_steps = max(1, int(est_tokens // (
         config.batch_size * config.max_seq_len * config.gradient_accumulation_steps
-    ))
+    )))
     warmup_steps = max(1, int(total_steps * config.warmup_ratio))
     stype = getattr(config, 'schedule_type', 'constant')
 
@@ -149,7 +141,7 @@ def run_experiment(exp_id, changes=None, train_tokens=600_000, seed=42):
             'steps': results['steps'],
             'tokens_seen': results['tokens_seen'],
             'tokens_per_second': results['tokens_seen'] / max(0.1, ttime),
-            'train_tokens': train_tokens,
+            'train_seconds': train_seconds,
             'total_params': total_params,
             'changes': changes,
         }
@@ -208,7 +200,7 @@ def run_batch(queue_file, results_dir="results"):
         result = run_experiment(
             exp_id=exp['exp_id'],
             changes=exp.get('changes', {}),
-            train_tokens=exp.get('train_tokens', 600_000),
+            train_seconds=exp.get('train_seconds', 5),
             seed=exp.get('seed', 42),
         )
 

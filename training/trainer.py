@@ -136,6 +136,11 @@ def train_model(
         for batch_idx, batch in enumerate(train_loader):
             if tokens_seen >= config.train_tokens:
                 break
+            # Hard time limit
+            if config.max_train_seconds is not None:
+                if time.time() - train_start_time >= config.max_train_seconds:
+                    stopped_early = True
+                    break
 
             # Handle different batch formats
             if isinstance(batch, dict):

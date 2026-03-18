@@ -28,6 +28,7 @@ class LLMConfig:
     batch_size: int = 8
     gradient_accumulation_steps: int = 1
     train_tokens: int = 8000000
+    max_train_seconds: Optional[float] = None  # Hard time limit (seconds)
     
     # Learning Rate (Aggressive for pre-training)
     muon_lr: float = 0.024
