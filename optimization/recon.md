@@ -14,31 +14,33 @@
 
 ## Training Setup
 - Optimizer: Hybrid Muon (2D tensors) + AdamW (norms/embeddings)
-- Muon LR: 0.024, momentum: 0.95
-- AdamW LR: 0.006, weight_decay: 0.2
-- Schedule: constant (no warmup, no decay)
+- Baseline Muon LR: 0.024
+- Baseline AdamW LR: 0.006
+- Weight decay: 0.2
+- Schedule: constant
 - AMP: BF16
-- Batch size: 8, seq_len: 2048
-- Grad clip: 1.0, dropout: 0.0
-- torch.compile: True
+- Batch size: 4
+- Seq length: 2048
+- Grad clip: 1.0
+- Dropout: 0.0
+- torch.compile: off for short experiments; eager mode is the active setup
 
 ## Data
-- Dataset: processed_data/pretrain_1B/ (pre-tokenized, 33 arrow files)
-- Tokenizer: HuggingFaceTB/SmolLM2-135M (vocab_size=49152)
-- 10% validation split
+- Dataset: `processed_data/pretrain_1B/` (pre-tokenized, 33 arrow files)
+- Tokenizer: HuggingFaceTB/SmolLM2-135M (`vocab_size=49152`)
+- Validation split: 10%
 
-## Tunable Axes
-1. Learning rates (muon_lr, adamw_lr)
-2. LR schedule (constant, cosine, linear) + warmup_ratio
-3. Weight decay
-4. Muon momentum
-5. Gradient clipping
-6. Batch size
-7. Model dimensions (d_model, n_layers, d_ff, n_heads)
-8. Gradient accumulation steps
-9. Dropout
+## Active Axes
+1. Muon learning rate
+2. Derived AdamW learning rate via `adamw_lr = muon_lr / 4`
+3. Training duration: `5s`, `10s`, `20s`
+
+Other tunable axes exist in the repo, but they are out of scope for the current research pass.
 
 ## Feasibility
-- tokens_per_second: TBD (calibrating)
-- 5s experiment: TBD tokens
-- Noise floor: TBD (3 baseline runs with different seeds)
+- Throughput: about 50K tokens/sec in eager mode
+- 5s run: about 250K tokens
+- 10s run: about 500K tokens
+- 20s run: about 1M tokens
+- Primary evaluation strategy: use seed `42` for all ranking runs
+- Tie-break rule: only run extra seeds if the top candidates at the same duration are within about `0.01` val_loss and the winner is too close to call

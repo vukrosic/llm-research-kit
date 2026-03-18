@@ -2,128 +2,100 @@
 
 ## Core Principles
 
-1. **Single seed (42) for all experiments.** Same seed = same data order = fair comparison. Any val_loss difference is real signal, not noise.
-2. **Val loss is the only metric.** Lower val_loss = better. No subjective judgments.
-3. **Eager mode only** (no torch.compile). Compilation overhead (~46s) ruins short experiments and changes throughput characteristics.
-4. **Time-based stopping.** Each tier has a fixed wall-clock budget. The model trains for exactly that many seconds.
+1. **Use a fixed small seed set for the main benchmark.** Current default: `42` and `137`.
+2. **Val loss is the only metric.** Lower val loss wins.
+3. **Eager mode only.** `torch.compile` adds overhead and changes short-run behavior.
+4. **Time-based stopping.** Every run is fixed to `5s`, `10s`, or `20s`.
+5. **Active scope is LR scaling only.** Do not branch into schedules, weight decay, momentum, batch size, or architecture search in this phase.
 
 ## Tier Structure
 
 | Tier | Duration | Purpose | Max experiments | Promote top N |
 |------|----------|---------|-----------------|---------------|
-| T1   | 5s       | Wide exploration, eliminate bad configs | 20-30 | Top 8 |
-| T2   | 10s      | Narrow the field, first scaling signal | 8-12 | Top 5 |
-| T3   | 20s      | Confirm scaling trends | 5-8 | Top 3 |
-| T4   | 30s+     | Final validation | 3-5 | Winner |
+| T1 | 5s | Broad LR screening | 12 | Top 2-3 |
+| T2 | 10s | Intermediate transfer check | 12 | Top 2-3 |
+| T3 | 20s | Target tier to predict | 12 | Winner |
 
-## T1: Wide Exploration (5s)
+## T1: 5s Screening
 
-**Goal:** Explore the hyperparameter space broadly. Eliminate clearly bad configs.
+**Goal:** Find the short-run LR ordering.
 
 **What to vary:**
-- batch_size: [1, 2, 3, 4, 8]
-- muon_lr: [0.006, 0.008, 0.010, 0.012, 0.016, 0.024]
-- weight_decay: [0.0, 0.05, 0.1, 0.2]
-- grad_clip: [0.5, 1.0, 2.0]
-- Any architectural or schedule changes
+- `muon_lr` only
+- Keep `adamw_lr = muon_lr / 4`
+- Keep all other settings fixed
 
 **Rules:**
-- Run 20-30 experiments in systematic batches of 5
-- Always include the current best config as a control/baseline
-- Log every result, even failures and OOMs
-- After all T1 experiments, rank by val_loss and take top 8
+- Use the same LR grid as every other tier
+- Compare ranks, top-2 containment, and regret rather than only the winner
 
-## T2: Scaling Signal (10s)
+## T2: 10s Transfer Check
 
-**Goal:** See which T1 winners actually scale. First real ranking.
+**Goal:** Check whether the `5s` ranking persists and whether it helps predict `20s`.
 
 **What to run:**
-- All top 8 from T1 (exact same configs, just 10s instead of 5s)
-- Plus 2-4 "diversity picks" — configs that were mediocre at T1 but explore a different region of HP space (e.g., very small batch size, unusual LR)
+- The same fixed LR grid as `5s`
+- The same seed set as `5s`
 
 **Rules:**
-- 8-12 experiments total
-- Compare T1→T2 rank changes to identify scaling trends
-- Configs that DROP 3+ ranks from T1→T2 are "non-scalers" — eliminate them
-- Configs that RISE 2+ ranks are "scalers" — these are the real candidates
-- Promote top 5 to T3
+- Compare `5s -> 10s` rank changes
+- Test whether `10s` is the minimum reliable selection tier
 
-## T3: Confirmation (20s)
+## T3: 20s Target Tier
 
-**Goal:** Confirm scaling trends hold. Identify the real winner.
+**Goal:** Identify the actual winner and judge whether short runs predicted it.
 
 **What to run:**
-- All top 5 from T2
-- Plus 1-2 new configs inspired by scaling patterns (e.g., if smaller batch keeps winning, try even smaller)
-- Plus 1 "extrapolation" config: take the T1→T2 scaling trend and extrapolate the optimal HP for 20s
+- The same fixed LR grid as `5s` and `10s`
+- The same seed set as `5s` and `10s`
 
 **Rules:**
-- 5-8 experiments total
-- Build the full scaling table: each config's val_loss at 5s, 10s, 20s
-- Calculate scaling rate: (val_loss_5s - val_loss_20s) / 15 seconds = loss improvement per second
-- The config with the best scaling rate AND good absolute loss wins
-- Promote top 3 to T4
+- Build the `5s/10s/20s` transfer table
+- Evaluate exact winner match, top-2 containment, and regret
+- Decide whether `5s` alone was enough, or whether `10s` materially improved the prediction
 
-## T4: Final Validation (30s+)
+## Tie-Break Seeds
 
-**Goal:** Confirm the winner at longer training. This is what actually matters.
-
-**Rules:**
-- Run top 3 from T3 at 30s
-- The winner at 30s is the recommended production config
-- Optional: run winner at 60s, 120s for extrapolation confidence
-- Optional: run winner with 3 different seeds (42, 137, 256) to confirm it's not seed-dependent
+Only run extra seeds beyond the main two-seed benchmark if:
+- the top candidates differ by less than about `0.01` val_loss at the same duration
+- or the result is intended as a publishable claim and the winner is too close to call
 
 ## Leaderboard Rules
 
-1. **One leaderboard per tier.** Never compare across tiers (5s loss vs 10s loss is meaningless).
-2. **Deduplication:** If the same config is run twice at the same tier, keep only the best result.
-3. **Leaderboard size:** Show top 8 per tier.
-4. **Required columns:** Rank, exp_id, val_loss, steps, tokens/sec, delta vs best, config changes.
-5. **Baseline:** The default config (no changes) must appear in every tier as the reference point.
+1. **One leaderboard per tier.** Never compare losses across durations directly.
+2. **Deduplication:** If the same config is run twice at the same tier and seed, keep only the best result.
+3. **Leaderboard size:** Show the relevant contenders, not a padded list.
+4. **Required columns:** Rank, exp_id, val_loss, config changes.
+5. **Baseline:** The default config must appear in every tier.
 
 ## Scaling Table Rules
 
-The scaling table is the most important output. It shows how each config performs across tiers.
+The transfer table is the most important output.
 
-| Config | 5s | 10s | 20s | 30s | Scaling Rate | Rank Trend |
-|--------|----|----|-----|-----|-------------|------------|
-| ... | val_loss | val_loss | val_loss | val_loss | Δloss/Δtime | T1→T2→T3→T4 |
+| Config | 5s | 10s | 20s | Rank Trend | Prediction Outcome |
+|--------|----|-----|-----|------------|--------------------|
+| ... | val_loss | val_loss | val_loss | T1->T2->T3 | predicted winner or not |
 
 **Key metrics:**
-- **Scaling rate:** `(loss_T1 - loss_T3) / (20 - 5)` = loss improvement per second. Higher magnitude = better scaler.
-- **Rank trend:** Track rank at each tier. Rising = scaler. Falling = non-scaler.
-- **Consistency:** A config that's top 3 at ALL tiers is more trustworthy than one that's #1 at one tier but #5 at another.
+- **Rank trend:** Track the ordering across tiers.
+- **Prediction outcome:** Did the short-run ranking identify the true `20s` winner?
 
-## What NOT to Do
+## What Not To Do
 
-1. **Don't over-invest in T1.** 5s experiments are cheap but misleading. Use them for elimination, not selection.
-2. **Don't skip tiers.** Going straight from 5s to 20s misses the scaling inflection points.
-3. **Don't change multiple HPs at once** in the same batch. Change one variable at a time in systematic sweeps so you can attribute the effect.
-4. **Don't ignore "boring" configs.** The default config or a simple change often beats complex multi-HP combinations.
-5. **Don't chase noise.** If two configs differ by <0.01 in val_loss, they're effectively tied. Look at scaling rate to break ties.
+1. **Do not broaden scope.** No new hyperparameter categories until LR transfer is answered.
+2. **Do not skip tiers.** Going straight from `5s` to `20s` weakens the transfer story.
+3. **Do not change multiple HPs at once.** Only LR moves in this phase.
+4. **Do not overclaim.** A close single-seed result is a hint, not a theorem.
 
-## Experiment Naming Convention
+## Metrics To Report
 
-Format: `{duration}s_{batch_size_info}_{lr_info}_{other_changes}`
+- Exact winner match at `20s`
+- Top-2 containment of the `20s` winner
+- Regret at `20s`
+- Rank correlation: `5s` vs `20s`
+- Rank correlation: `10s` vs `20s`
 
-Examples:
-- `5s_bs4_lr0.010` — 5s, batch_size=4, muon_lr=0.010
-- `10s_bs3_lr0.010_wd0.1` — 10s, batch_size=3, muon_lr=0.010, weight_decay=0.1
-- `20s_default` — 20s with all default hyperparameters
+## When To Stop
 
-## When to Stop
-
-- **Stop exploring a HP** when 3+ experiments show it has <0.01 effect on val_loss at T2+.
-- **Stop a tier** when you've run all planned experiments and the top 3 are clear.
-- **Stop the whole research** when the T4 winner is identified and confirmed with multi-seed.
-
-## Recording Results
-
-Every experiment must produce a JSON file in `results/{batch_name}/` with:
-- `exp_id`, `changes` (dict of HP diffs from default), `val_loss`, `train_loss`
-- `steps`, `tokens_per_second`, `training_time`, `train_seconds`, `seed`
-- `status` ("done", "failed", "oom")
-
-The queue file (`optimization/queue.json`) tracks planned, running, and completed experiments.
-The dashboard reads from `results/` and `optimization/` to show live status.
+- Stop the benchmark when the fixed-grid, two-seed sweep is complete
+- Stop this phase when you can answer the five protocol questions with a clean transfer table

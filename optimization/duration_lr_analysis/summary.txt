@@ -1,0 +1,6 @@
+Noise sigma estimate: 0.0152
+Grouped points: 25
+Duration fits: 3
+Power law: lr* = 0.009171 * duration^0.087071
+beta = 0.087071 ± 0.013348, 95% CI [0.060909, 0.113234], p = 0.000000
+Conclusion: duration-dependent, use lr*(d) = 0.009171 * d^0.087071

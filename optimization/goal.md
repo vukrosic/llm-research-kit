@@ -1,15 +1,16 @@
 # Goal
 
-**Discover scaling laws and optimal hyperparameter configurations through fast experiments (5-20 seconds).**
+**Discover whether short LLM runs can predict the 20s learning-rate winner through fast experiments at `5s`, `10s`, and `20s`.**
 
 Focus areas:
-1. How do optimal hyperparameters change as training duration increases? (5s → 10s → 20s)
-2. Which hyperparameters transfer across scales and which don't?
-3. What is the relationship between model size, learning rate, and optimal training duration?
-4. Can we predict longer-run performance from short-run metrics?
+1. How does the optimal Muon learning rate change across `5s -> 10s -> 20s`?
+2. Is `5s` good for elimination but not final selection?
+3. Is `10s` the minimum reliable selection tier for the `20s` winner?
+4. Is top-2 prediction much easier than exact winner prediction?
+5. What is the cheapest LR protocol that predicts the `20s` winner with low regret?
 
 Metric: validation loss (cross-entropy)
 Dataset: pretrain_1B (1B tokens pre-processed, used as data source for all experiments)
 Architecture: 88M MinimalLLM transformer (baseline)
 
-This is a research project about understanding scaling behavior, not about achieving a single best loss number.
+This is a focused research project about LR transfer across short durations, not a broad hyperparameter search.

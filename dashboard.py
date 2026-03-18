@@ -1,623 +1,681 @@
 #!/usr/bin/env python3
-"""Real-time optimization dashboard. Run: python3 dashboard.py
-Tunneled via: ssh -L 9091:localhost:5000 ...
-"""
+"""Simple dashboard for the active LR transfer research."""
+
+from __future__ import annotations
+
 from flask import Flask, Response
-from collections import defaultdict
-import json, os, subprocess, time
+import html
+import json
+import os
+import subprocess
+import time
+
 
 app = Flask(__name__)
 
-TIERS = [
-    ('T1', '5s', 'Wide Exploration', 20, 8),
-    ('T2', '10s', 'Scaling Signal', 12, 5),
-    ('T3', '20s', 'Confirmation', 8, 3),
-    ('T4', '30s', 'Validation', 5, 3),
-    ('T5', '60s', 'Extended', 5, 3),
-    ('T6', '90s', 'Extended', 5, 3),
-    ('T7', '120s', 'Final', 5, 1),
-]
+ROOT = "/root/llm-research-kit"
+STATUS_PATH = os.path.join(ROOT, "optimization", "status.json")
+QUEUE_PATH = os.path.join(ROOT, "optimization", "queue_lr_transfer.json")
+RESULTS_DIR = os.path.join(ROOT, "results", "batch_27_lr_transfer")
 
-SWEEP_QUEUE_CANDIDATES = [
-    'optimization/queue_duration_lr.json',
-    'optimization/queue.json',
-]
-SWEEP_RESULTS_ROOTS = [
-    'results/duration_lr_sweep',
-    'results',
-]
-SWEEP_ANALYSIS_DIR = 'optimization/duration_lr_analysis'
+DOC_PATHS = {
+    "goal": os.path.join(ROOT, "optimization", "goal.md"),
+    "plan": os.path.join(ROOT, "optimization", "plan.md"),
+    "insights": os.path.join(ROOT, "optimization", "insights.md"),
+    "life_goals": os.path.join(ROOT, "my-life", "goals.md"),
+}
+
+
+def read_text(path: str) -> str:
+    try:
+        with open(path) as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
+def load_json(path: str, default):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return default
 
 
 def get_gpu_info():
     try:
         out = subprocess.check_output(
-            ['nvidia-smi', '--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu,power.draw,power.limit',
-             '--format=csv,noheader,nounits'], text=True, timeout=3
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu,power.draw,power.limit",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+            timeout=3,
         ).strip()
-        parts = [p.strip() for p in out.split(',')]
-        return dict(name=parts[0], mem_used=parts[1], mem_total=parts[2],
-                    util=parts[3], temp=parts[4], power=parts[5], power_limit=parts[6],
-                    mem_pct=float(parts[1])/float(parts[2])*100)
-    except:
+        parts = [p.strip() for p in out.split(",")]
+        return {
+            "name": parts[0],
+            "mem_used": float(parts[1]),
+            "mem_total": float(parts[2]),
+            "util": float(parts[3]),
+            "temp": parts[4],
+            "power": parts[5],
+            "power_limit": parts[6],
+        }
+    except Exception:
         return None
 
 
-def get_status():
-    try:
-        with open('optimization/status.json') as f:
-            return json.load(f)
-    except:
-        return {}
-
-
-def load_all_results():
-    results = []
-    for root_base in SWEEP_RESULTS_ROOTS:
-        if not os.path.exists(root_base):
+def load_results() -> list[dict]:
+    rows = []
+    if not os.path.exists(RESULTS_DIR):
+        return rows
+    for name in sorted(os.listdir(RESULTS_DIR)):
+        if not name.endswith(".json"):
             continue
-        for root, dirs, files in os.walk(root_base):
-            for f in files:
-                if f.endswith('.json'):
-                    try:
-                        with open(os.path.join(root, f)) as fh:
-                            r = json.load(fh)
-                        if r.get('status') == 'done' and 'val_loss' in r:
-                            results.append(r)
-                    except:
-                        pass
-    return results
+        path = os.path.join(RESULTS_DIR, name)
+        row = load_json(path, None)
+        if isinstance(row, dict) and row.get("status") == "done":
+            rows.append(row)
+    return rows
 
 
-def get_queue():
-    for path in SWEEP_QUEUE_CANDIDATES:
-        if os.path.exists(path):
-            try:
-                with open(path) as f:
-                    queue = json.load(f)
-                if queue:
-                    return queue
-            except:
-                pass
-    return []
+def duration_sort_key(value: str) -> float:
+    return float(value.rstrip("s"))
 
 
-def get_queue_path():
-    for path in SWEEP_QUEUE_CANDIDATES:
-        if os.path.exists(path):
-            return path
-    return 'optimization/queue.json'
+def classify_duration(row: dict) -> str:
+    return f"{int(float(row.get('train_seconds', 0)))}s"
 
 
-def get_analysis_summary():
-    summary_path = os.path.join(SWEEP_ANALYSIS_DIR, 'summary.txt')
-    if not os.path.exists(summary_path):
-        return None
+def lr_value(row: dict) -> float | None:
     try:
-        with open(summary_path) as f:
-            return f.read()
-    except:
+        return float(row.get("changes", {}).get("muon_lr"))
+    except Exception:
         return None
 
 
-def classify_duration(r):
-    ts = r.get('train_seconds', 0)
-    if ts <= 0:
-        tt = r.get('training_time', 0)
-        if tt <= 7: return '5s'
-        elif tt <= 15: return '10s'
-        elif tt <= 25: return '20s'
-        else: return f'{int(tt)}s'
-    if ts <= 5: return '5s'
-    elif ts <= 10: return '10s'
-    elif ts <= 20: return '20s'
-    elif ts <= 30: return '30s'
-    else: return f'{ts}s'
+def build_transfer_data(results: list[dict]) -> dict[float, dict[str, dict]]:
+    data: dict[float, dict[str, dict]] = {}
+    for row in results:
+        lr = lr_value(row)
+        duration = classify_duration(row)
+        if lr is None:
+            continue
+        data.setdefault(lr, {})[duration] = row
+    return dict(sorted(data.items()))
 
 
-def short_config(changes):
-    if not changes:
-        return 'default'
+def best_by_duration(results: list[dict]) -> dict[str, dict]:
+    best = {}
+    for row in results:
+        duration = classify_duration(row)
+        if duration not in best or row["val_loss"] < best[duration]["val_loss"]:
+            best[duration] = row
+    return best
+
+
+def render_markdown_block(text: str) -> str:
+    lines = text.splitlines()
     parts = []
-    for k, v in changes.items():
-        if k == 'batch_size': parts.append(f'bs={v}')
-        elif k == 'muon_lr': parts.append(f'lr={v}')
-        elif k == 'adamw_lr': continue  # skip, derived from muon_lr
-        elif k == 'weight_decay': parts.append(f'wd={v}')
-        elif k == 'grad_clip': parts.append(f'gc={v}')
-        else: parts.append(f'{k}={v}')
-    return ', '.join(parts) if parts else 'default'
-
-
-def get_tier_counts(results):
-    counts = defaultdict(int)
-    for r in results:
-        counts[classify_duration(r)] += 1
-    return counts
-
-
-def render_tier_pipeline(results, queue):
-    counts = get_tier_counts(results)
-    # Find current tier being worked on
-    running = [e for e in queue if e.get('status') == 'running']
-    pending = [e for e in queue if e.get('status') == 'pending']
-    current_dur = None
-    if running:
-        current_dur = f"{running[0].get('train_seconds', '?')}s"
-    elif pending:
-        current_dur = f"{pending[0].get('train_seconds', '?')}s"
-
-    pills = ''
-    for tid, dur, desc, target, promote in TIERS:
-        n = counts.get(dur, 0)
-        is_active = (dur == current_dur)
-        is_done = n >= promote  # has enough to promote
-        if is_active:
-            cls = 'tier-active'
-            badge = 'RUNNING'
-        elif is_done:
-            cls = 'tier-done'
-            badge = f'{n} done'
-        elif n > 0:
-            cls = 'tier-partial'
-            badge = f'{n}/{target}'
+    in_list = False
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            continue
+        if line.startswith("### "):
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            parts.append(f"<h4>{html.escape(line[4:])}</h4>")
+        elif line.startswith("## "):
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            parts.append(f"<h3>{html.escape(line[3:])}</h3>")
+        elif line.startswith("# "):
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            parts.append(f"<h2>{html.escape(line[2:])}</h2>")
+        elif line.startswith("- "):
+            if not in_list:
+                parts.append("<ul>")
+                in_list = True
+            parts.append(f"<li>{html.escape(line[2:])}</li>")
+        elif line[0].isdigit() and ". " in line[:4]:
+            if not in_list:
+                parts.append("<ul>")
+                in_list = True
+            parts.append(f"<li>{html.escape(line.split('. ', 1)[1])}</li>")
         else:
-            cls = 'tier-pending'
-            badge = 'waiting'
-
-        pills += f'''<div class="tier-pill {cls}">
-            <div class="tier-id">{tid}</div>
-            <div class="tier-dur">{dur}</div>
-            <div class="tier-desc">{desc}</div>
-            <div class="tier-badge">{badge}</div>
-            <div class="tier-promote">Top {promote} advance</div>
-        </div>'''
-
-    arrows = '<span class="tier-arrow">&#9654;</span>' * 3
-    return f'<div class="tier-pipeline">{pills}</div>'
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            parts.append(f"<p>{html.escape(line)}</p>")
+    if in_list:
+        parts.append("</ul>")
+    return "".join(parts)
 
 
-def render_leaderboard(results, category, limit=8, all_results=None):
-    filtered = [r for r in results if classify_duration(r) == category]
-    if not filtered:
-        return '<p class="dim">No experiments yet</p>'
+def svg_line_chart(transfer: dict[float, dict[str, dict]]) -> str:
+    durations = ["5s", "10s", "20s"]
+    width = 680
+    height = 260
+    pad_l = 56
+    pad_r = 20
+    pad_t = 20
+    pad_b = 40
 
-    filtered.sort(key=lambda r: r['val_loss'])
-    seen = set()
-    deduped = []
-    for r in filtered:
-        cs = json.dumps(r.get('changes', {}), sort_keys=True)
-        if cs not in seen:
-            seen.add(cs)
-            deduped.append(r)
-    filtered = deduped[:limit]
+    points = []
+    for lr, items in transfer.items():
+        for duration in durations:
+            row = items.get(duration)
+            if row:
+                points.append(row["val_loss"])
+    if not points:
+        return "<div class='empty-plot'>No results yet</div>"
 
-    # Get rank at other tiers for scaling indicator
-    def get_rank_at(changes, dur):
-        cs = json.dumps(changes, sort_keys=True)
-        tier_results = sorted(
-            [r for r in (all_results or []) if classify_duration(r) == dur],
-            key=lambda r: r['val_loss']
-        )
-        seen2 = set()
-        for i, r in enumerate(tier_results):
-            rcs = json.dumps(r.get('changes', {}), sort_keys=True)
-            if rcs not in seen2:
-                seen2.add(rcs)
-                if rcs == cs:
-                    return i + 1
-        return None
+    y_min = min(points) - 0.02
+    y_max = max(points) + 0.02
 
-    best = filtered[0]['val_loss']
-    rows = ''
-    for i, r in enumerate(filtered):
-        delta = r['val_loss'] - best
-        cls = 'best' if i == 0 else ''
-        cs = short_config(r.get('changes', {}))
-        tps = r.get('tokens_per_second', 0)
-        tps_str = f'{tps/1000:.0f}K' if tps > 0 else '-'
+    def x_pos(i: int) -> float:
+        return pad_l + i * ((width - pad_l - pad_r) / (len(durations) - 1))
 
-        # Scaling trend: compare this config's rank HERE vs its rank at 120s (or longest available)
-        # Green arrow UP = config ranks HIGHER at longer training (scales well)
-        # Red arrow DOWN = config ranks LOWER at longer training (doesn't scale)
-        trend = ''
-        changes = r.get('changes', {})
-        if all_results:
-            # Find longest tier where this config has data
-            for target_dur in ['120s', '90s', '60s', '30s', '20s']:
-                if target_dur == category:
-                    break
-                rt = get_rank_at(changes, target_dur)
-                if rt is not None:
-                    if rt < i + 1:
-                        trend = f'<span class="trend-up" title="Rank #{i+1} here -> #{rt} at {target_dur}">&#9650;{i+1-rt}</span>'
-                    elif rt > i + 1:
-                        trend = f'<span class="trend-down" title="Rank #{i+1} here -> #{rt} at {target_dur}">&#9660;{rt-i-1}</span>'
-                    else:
-                        trend = f'<span class="trend-flat" title="Same rank at {target_dur}">&#9644;</span>'
-                    break
+    def y_pos(v: float) -> float:
+        span = max(y_max - y_min, 1e-6)
+        return pad_t + (y_max - v) * (height - pad_t - pad_b) / span
 
-        rows += f'''<tr class="{cls}">
-            <td>{i+1}</td>
-            <td class="config-col">{cs}</td>
-            <td><b>{r["val_loss"]:.4f}</b></td>
-            <td>{r.get("steps","-")}</td>
-            <td>{tps_str}</td>
-            <td>{"+" if delta>=0 else ""}{delta:.4f}</td>
-            <td>{trend}</td>
-        </tr>'''
+    palette = {
+        0.006: "#ff6b6b",
+        0.008: "#1f7a8c",
+        0.012: "#f2c14e",
+    }
 
-    return f'''<table>
-        <tr><th>#</th><th>Config</th><th>Val Loss</th><th>Steps</th><th>TPS</th><th>vs Best</th><th title="Green UP = this config ranks higher at longer training (scales well). Red DOWN = ranks lower (doesn't scale). Compares to longest available tier.">Scale</th></tr>
-        {rows}
-    </table>'''
+    grid = []
+    for i in range(5):
+        v = y_min + i * (y_max - y_min) / 4
+        y = y_pos(v)
+        grid.append(f"<line x1='{pad_l}' y1='{y:.1f}' x2='{width-pad_r}' y2='{y:.1f}' class='grid' />")
+        grid.append(f"<text x='{pad_l-8}' y='{y+4:.1f}' class='axis-label' text-anchor='end'>{v:.3f}</text>")
 
+    labels = []
+    for i, duration in enumerate(durations):
+        x = x_pos(i)
+        labels.append(f"<text x='{x:.1f}' y='{height-12}' class='axis-label' text-anchor='middle'>{duration}</text>")
 
-def render_scaling_table(results):
-    config_results = defaultdict(dict)
-    for r in results:
-        cat = classify_duration(r)
-        key = json.dumps(r.get('changes', {}), sort_keys=True)
-        label = short_config(r.get('changes', {}))
-        if cat not in config_results[(key, label)] or r['val_loss'] < config_results[(key, label)][cat]['val_loss']:
-            config_results[(key, label)][cat] = r
+    lines = []
+    for lr, items in transfer.items():
+        coords = []
+        for i, duration in enumerate(durations):
+            row = items.get(duration)
+            if row:
+                coords.append((x_pos(i), y_pos(row["val_loss"]), row["val_loss"]))
+        if not coords:
+            continue
+        color = palette.get(lr, "#ffffff")
+        poly = " ".join(f"{x:.1f},{y:.1f}" for x, y, _ in coords)
+        lines.append(f"<polyline points='{poly}' fill='none' stroke='{color}' stroke-width='3' />")
+        for x, y, v in coords:
+            lines.append(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='5' fill='{color}' />")
+            lines.append(f"<text x='{x:.1f}' y='{y-10:.1f}' class='point-label' text-anchor='middle'>{v:.4f}</text>")
 
-    multi = {k: v for k, v in config_results.items() if len(v) >= 2}
-    if not multi:
-        return '<p class="dim">Run configs at multiple durations to see scaling trends</p>'
+    legend = []
+    lx = pad_l
+    ly = 12
+    for lr in transfer.keys():
+        color = palette.get(lr, "#ffffff")
+        legend.append(f"<circle cx='{lx}' cy='{ly}' r='5' fill='{color}' />")
+        legend.append(f"<text x='{lx+10}' y='{ly+4}' class='legend-label'>lr={lr:.3f}</text>")
+        lx += 92
 
-    # Find all durations present
-    all_durs = sorted(set(
-        cat for (_, _), durs in config_results.items() for cat in durs.keys()
-    ), key=lambda d: float(d.rstrip('s')))
-
-    # Get ranks per tier
-    tier_ranks = {}
-    for dur in all_durs:
-        tier_items = []
-        for (key, label), durations in config_results.items():
-            if dur in durations:
-                tier_items.append((durations[dur]['val_loss'], key))
-        tier_items.sort()
-        tier_ranks[dur] = {k: i+1 for i, (_, k) in enumerate(tier_items)}
-
-    def sort_key(item):
-        _, durations = item
-        # Sort by longest duration result first
-        for d in reversed(all_durs):
-            if d in durations:
-                return durations[d]['val_loss']
-        return 99
-
-    rows = ''
-    for (key, label), durations in sorted(multi.items(), key=sort_key):
-        cells = ''
-        for dur in all_durs:
-            if dur in durations:
-                v = durations[dur]['val_loss']
-                rank = tier_ranks.get(dur, {}).get(key, '?')
-                cells += f'<td>{v:.4f} <span class="rank-badge">#{rank}</span></td>'
-            else:
-                cells += '<td class="dim">-</td>'
-
-        # Total drop from shortest to longest
-        vals = [(float(d.rstrip('s')), durations[d]['val_loss']) for d in all_durs if d in durations]
-        if len(vals) >= 2:
-            drop = vals[0][1] - vals[-1][1]
-            cells += f'<td class="best">{drop:.3f}</td>'
-        else:
-            cells += '<td class="dim">-</td>'
-
-        # Rank trend
-        ranks = []
-        for dur in all_durs:
-            r = tier_ranks.get(dur, {}).get(key)
-            if r is not None:
-                ranks.append(f'#{r}')
-        trend = ' -> '.join(ranks)
-        cells += f'<td>{trend}</td>'
-
-        rows += f'<tr><td class="config-col">{label}</td>{cells}</tr>'
-
-    dur_headers = ''.join(f'<th>{d}</th>' for d in all_durs)
-    return f'''<table>
-        <tr><th>Config</th>{dur_headers}<th>Total Drop</th><th>Rank Trend</th></tr>
-        {rows}
-    </table>'''
+    return (
+        f"<svg viewBox='0 0 {width} {height}' class='chart'>"
+        + "".join(grid)
+        + "".join(labels)
+        + "".join(lines)
+        + "".join(legend)
+        + "</svg>"
+    )
 
 
-def render_queue(queue):
-    # Only show pending/running, then last 3 done
-    active = [e for e in queue if e['status'] in ('pending', 'running')]
-    done = [e for e in queue if e['status'] == 'done'][-3:]
-    show = active + done
-    if not show:
-        return '<p class="dim">Queue empty - no experiments scheduled</p>'
+def svg_gap_chart(transfer: dict[float, dict[str, dict]]) -> str:
+    durations = ["5s", "10s", "20s"]
+    width = 680
+    height = 210
+    pad_l = 56
+    pad_r = 18
+    pad_t = 24
+    pad_b = 34
 
-    rows = ''
-    for exp in show:
-        s = exp['status']
-        loss = f'{exp["val_loss"]:.4f}' if 'val_loss' in exp else '-'
-        dur = f'{exp.get("train_seconds", "?")}s'
-        cs = short_config(exp.get('changes', {}))
-        status_cls = s
-        status_icon = {'pending': '&#9711;', 'running': '&#9654;', 'done': '&#10003;', 'failed': '&#10007;', 'oom': '&#10007;'}.get(s, '?')
-        rows += f'''<tr class="{status_cls}">
-            <td class="{status_cls}">{status_icon} {s.upper()}</td>
-            <td>{dur}</td>
-            <td>{cs}</td>
-            <td>{loss}</td>
-            <td class="dim">{exp.get("hypothesis","")[:60]}</td>
-        </tr>'''
+    grouped = []
+    for duration in durations:
+        vals = []
+        for lr, items in transfer.items():
+            row = items.get(duration)
+            if row:
+                vals.append((lr, row["val_loss"]))
+        vals.sort(key=lambda x: x[1])
+        if vals:
+            grouped.append((duration, vals))
 
-    return f'''<table>
-        <tr><th>Status</th><th>Dur</th><th>Config</th><th>Val Loss</th><th>Hypothesis</th></tr>
-        {rows}
-    </table>'''
+    if not grouped:
+        return "<div class='empty-plot'>No results yet</div>"
+
+    min_loss = min(v for _, vals in grouped for _, v in vals)
+    max_gap = max(vals[-1][1] - min_loss for _, vals in grouped)
+    max_gap = max(max_gap, 0.02)
+
+    def y_pos(v: float) -> float:
+        return pad_t + (max_gap - v) * (height - pad_t - pad_b) / max_gap
+
+    palette = {
+        0.006: "#ff6b6b",
+        0.008: "#1f7a8c",
+        0.012: "#f2c14e",
+    }
+
+    parts = []
+    for i in range(5):
+        gap = i * max_gap / 4
+        y = y_pos(gap)
+        parts.append(f"<line x1='{pad_l}' y1='{y:.1f}' x2='{width-pad_r}' y2='{y:.1f}' class='grid' />")
+        parts.append(f"<text x='{pad_l-8}' y='{y+4:.1f}' class='axis-label' text-anchor='end'>+{gap:.3f}</text>")
+
+    group_width = (width - pad_l - pad_r) / len(grouped)
+    bar_width = 44
+    for i, (duration, vals) in enumerate(grouped):
+        gx = pad_l + i * group_width + 16
+        parts.append(f"<text x='{gx + group_width/2 - 16:.1f}' y='{height-10}' class='axis-label' text-anchor='middle'>{duration}</text>")
+        for j, (lr, loss) in enumerate(vals):
+            gap = loss - min_loss
+            x = gx + j * (bar_width + 10)
+            y = y_pos(gap)
+            h = height - pad_b - y
+            color = palette.get(lr, "#ffffff")
+            parts.append(f"<rect x='{x:.1f}' y='{y:.1f}' width='{bar_width}' height='{h:.1f}' rx='8' fill='{color}' />")
+            parts.append(f"<text x='{x + bar_width/2:.1f}' y='{y-8:.1f}' class='point-label' text-anchor='middle'>{loss:.4f}</text>")
+            parts.append(f"<text x='{x + bar_width/2:.1f}' y='{height-pad_b+16:.1f}' class='small-label' text-anchor='middle'>{lr:.3f}</text>")
+
+    return f"<svg viewBox='0 0 {width} {height}' class='chart'>{''.join(parts)}</svg>"
 
 
-def render_sweep_status(status, queue, results):
-    active = [e for e in queue if e.get('status') == 'running']
-    pending = [e for e in queue if e.get('status') == 'pending']
-    done = [e for e in queue if e.get('status') == 'done']
-    failed = [e for e in queue if e.get('status') in ('failed', 'oom')]
-    latest = sorted(done, key=lambda r: (r.get('train_seconds', 0), r.get('seed', 0)))
-    latest_done = latest[-1] if latest else None
-    analysis = get_analysis_summary()
+def svg_rank_flow(transfer: dict[float, dict[str, dict]]) -> str:
+    durations = ["5s", "10s", "20s"]
+    width = 680
+    height = 210
+    cols = [110, 340, 570]
+    rows = {1: 54, 2: 105, 3: 156}
+    palette = {
+        0.006: "#ff6b6b",
+        0.008: "#1f7a8c",
+        0.012: "#f2c14e",
+    }
 
-    rows = [
-        f'<div><b>Queue:</b> {get_queue_path()}</div>',
-        f'<div><b>Running:</b> {status.get("current_exp", "none")}</div>',
-        f'<div><b>Progress:</b> {status.get("progress", "0/0")}</div>',
-        f'<div><b>Pending:</b> {len(pending)} | <b>Done:</b> {len(done)} | <b>Failed:</b> {len(failed)}</div>',
-    ]
+    ranks_by_duration = {}
+    for duration in durations:
+        vals = []
+        for lr, items in transfer.items():
+            row = items.get(duration)
+            if row:
+                vals.append((lr, row["val_loss"]))
+        vals.sort(key=lambda x: x[1])
+        ranks_by_duration[duration] = {lr: idx + 1 for idx, (lr, _) in enumerate(vals)}
 
-    if latest_done:
-        rows.append(
-            f'<div><b>Last result:</b> {latest_done["exp_id"]} '
-            f'({latest_done.get("train_seconds", "?")}s, lr={latest_done.get("changes", {}).get("muon_lr", "?")}) '
-            f'val_loss={latest_done["val_loss"]:.4f}</div>'
-        )
-    if analysis:
-        first_lines = "\n".join(analysis.strip().splitlines()[:4])
-        rows.append(f'<pre class="analysis-summary">{first_lines}</pre>')
-    else:
-        rows.append(f'<div class="dim">Analysis files will appear in {SWEEP_ANALYSIS_DIR} after the batch finishes.</div>')
+    parts = []
+    for i, duration in enumerate(durations):
+        parts.append(f"<text x='{cols[i]}' y='24' class='stage-label' text-anchor='middle'>{duration}</text>")
+        for rank in [1, 2, 3]:
+            parts.append(f"<text x='{cols[i]-64}' y='{rows[rank]+4}' class='axis-label' text-anchor='end'>#{rank}</text>")
 
-    return ''.join(f'<div class="sweep-line">{row}</div>' for row in rows)
+    for lr in transfer.keys():
+        coords = []
+        for i, duration in enumerate(durations):
+            rank = ranks_by_duration.get(duration, {}).get(lr)
+            if rank is not None:
+                coords.append((cols[i], rows[rank], rank))
+        if len(coords) < 2:
+            continue
+        color = palette.get(lr, "#ffffff")
+        path = " ".join(f"{x},{y}" for x, y, _ in coords)
+        parts.append(f"<polyline points='{path}' fill='none' stroke='{color}' stroke-width='4' stroke-linecap='round' />")
+        for x, y, rank in coords:
+            parts.append(f"<circle cx='{x}' cy='{y}' r='12' fill='{color}' />")
+            parts.append(f"<text x='{x}' y='{y+4}' class='node-label' text-anchor='middle'>{rank}</text>")
+        parts.append(f"<text x='{coords[-1][0] + 32}' y='{coords[-1][1] + 4}' class='legend-label'>lr={lr:.3f}</text>")
+
+    return f"<svg viewBox='0 0 {width} {height}' class='chart'>{''.join(parts)}</svg>"
 
 
-@app.route('/')
+def status_summary(queue: list[dict], status: dict) -> tuple[str, str]:
+    pending = len([q for q in queue if q.get("status") == "pending"])
+    done = len([q for q in queue if q.get("status") == "done"])
+    if status.get("current_exp"):
+        return ("Running", f"{status['current_exp']} | {status.get('progress', '?')}")
+    if pending:
+        return ("Queued", f"{pending} pending | {done} done")
+    if done:
+        return ("Idle", f"Latest batch finished | {done} done")
+    return ("Idle", "No active queue")
+
+
+@app.route("/")
 def dashboard():
-    os.chdir('/root/llm-research-kit')
+    os.chdir(ROOT)
+    now = time.strftime("%H:%M:%S")
     gpu = get_gpu_info()
-    status = get_status()
-    results = load_all_results()
-    queue = get_queue()
-    ts = time.strftime('%H:%M:%S')
+    queue = load_json(QUEUE_PATH, [])
+    status = load_json(STATUS_PATH, {})
+    results = load_results()
+    transfer = build_transfer_data(results)
+    best = best_by_duration(results)
+    state, state_detail = status_summary(queue, status)
 
-    # GPU bar
+    answer = "Waiting for results"
+    answer_sub = "Run the transfer batch to answer the main question."
+    if best:
+        best_5 = lr_value(best.get("5s", {}))
+        best_10 = lr_value(best.get("10s", {}))
+        best_20 = lr_value(best.get("20s", {}))
+        if best_20 is not None:
+            if best_5 == best_20:
+                answer = "5s matches the 20s winner"
+            else:
+                answer = "5s misses the exact 20s winner"
+            if best_10 == best_20:
+                answer_sub = f"10s recovers the 20s winner: lr={best_20:.3f}"
+            else:
+                answer_sub = f"20s winner is lr={best_20:.3f}; 10s still disagrees"
+
+    total_train = sum(r.get("training_time", 0) for r in results)
+    progress_count = f"{len(results)}/9"
+
+    gpu_html = "<div class='muted'>GPU unavailable</div>"
     if gpu:
-        gpu_html = f'''<span class="gpu-name">{gpu["name"]}</span>
-        <div class="gpu-row">
-            <span class="label">VRAM</span>
-            <div class="bar-bg"><div class="bar-fill bar-vram" style="width:{gpu["mem_pct"]}%"></div></div>
-            <span>{gpu["mem_used"]}/{gpu["mem_total"]}MiB</span>
-        </div>
-        <div class="gpu-row">
-            <span class="label">GPU</span>
-            <div class="bar-bg"><div class="bar-fill bar-util" style="width:{gpu["util"]}%"></div></div>
-            <span>{gpu["util"]}%</span>
-            <span class="dim">| {gpu["temp"]}C | {gpu["power"]}/{gpu["power_limit"]}W</span>
-        </div>'''
-    else:
-        gpu_html = '<span class="dim">GPU unavailable</span>'
+        mem_pct = 100 * gpu["mem_used"] / max(gpu["mem_total"], 1)
+        gpu_html = f"""
+        <div class="stat-line"><span>{html.escape(gpu['name'])}</span></div>
+        <div class="meter-row"><span>VRAM</span><div class="meter"><div class="fill fill-a" style="width:{mem_pct:.1f}%"></div></div><b>{gpu['mem_used']:.0f}/{gpu['mem_total']:.0f} MiB</b></div>
+        <div class="meter-row"><span>GPU</span><div class="meter"><div class="fill fill-b" style="width:{gpu['util']:.1f}%"></div></div><b>{gpu['util']:.0f}%</b></div>
+        <div class="muted">{gpu['temp']} C | {gpu['power']}/{gpu['power_limit']} W</div>
+        """
 
-    # Live status
-    is_running = bool(status.get('current_exp'))
-    if is_running:
-        live_html = f'''<div class="live-row">
-            <div class="running-badge pulse">TRAINING</div>
-            <div class="live-info">
-                <span class="exp-name">{status["current_exp"]}</span>
-                <span class="dim">{status.get("hypothesis","")}</span>
-                <span>Progress: {status.get("progress","?")} | Started: {status.get("started","?")}</span>
-            </div>
-        </div>'''
-    else:
-        live_html = f'''<div class="live-row">
-            <div class="idle-badge">IDLE</div>
-            <span class="dim">Last finished: {status.get("finished","never")}</span>
-        </div>'''
-
-    # Tier pipeline
-    pipeline_html = render_tier_pipeline(results, queue)
-
-    # Queue
-    queue_html = render_queue(queue)
-
-    # Leaderboards - build dynamically for all tiers with data
-    leaderboards = {}
-    for tid, dur, desc, target, promote in TIERS:
-        lb = render_leaderboard(results, dur, all_results=results)
-        leaderboards[(tid, dur, desc)] = lb
-
-    # Scaling
-    scaling_html = render_scaling_table(results)
-
-    # Counts
-    counts = get_tier_counts(results)
-    total_exps = len(results)
-    total_time = sum(r.get('training_time', 0) for r in results)
-
-    page = f'''<!DOCTYPE html>
+    page = f"""<!doctype html>
 <html>
 <head>
-<title>Scaling Research Dashboard</title>
-<meta http-equiv="refresh" content="3">
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: 'JetBrains Mono', 'Fira Code', monospace; background: #0a0a1a; color: #c8c8d8; padding: 12px 16px; font-size: 12px; }}
-
-  /* Header */
-  .header {{ display: flex; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid #222; margin-bottom: 10px; }}
-  .header h1 {{ color: #00d4ff; font-size: 1.3em; white-space: nowrap; }}
-  .header .meta {{ color: #555; font-size: 0.85em; }}
-
-  /* Tier Pipeline */
-  .tier-pipeline {{ display: flex; gap: 4px; margin-bottom: 10px; }}
-  .tier-pill {{ flex: 1; background: #12122a; border: 1px solid #1e1e3a; border-radius: 6px; padding: 8px 10px; text-align: center; }}
-  .tier-id {{ font-weight: bold; font-size: 1.1em; margin-bottom: 2px; }}
-  .tier-dur {{ font-size: 1.2em; font-weight: bold; }}
-  .tier-desc {{ color: #888; font-size: 0.8em; margin: 2px 0; }}
-  .tier-badge {{ font-size: 0.85em; padding: 1px 6px; border-radius: 3px; display: inline-block; margin: 2px 0; }}
-  .tier-promote {{ color: #555; font-size: 0.75em; }}
-  .tier-active {{ border-color: #ffaa00; background: #1a1500; }}
-  .tier-active .tier-id {{ color: #ffaa00; }}
-  .tier-active .tier-dur {{ color: #ffaa00; }}
-  .tier-active .tier-badge {{ background: #332200; color: #ffaa00; }}
-  .tier-done {{ border-color: #00ff88; }}
-  .tier-done .tier-id {{ color: #00ff88; }}
-  .tier-done .tier-dur {{ color: #00ff88; }}
-  .tier-done .tier-badge {{ background: #0a2a0a; color: #00ff88; }}
-  .tier-partial {{ border-color: #00d4ff; }}
-  .tier-partial .tier-id {{ color: #00d4ff; }}
-  .tier-partial .tier-dur {{ color: #00d4ff; }}
-  .tier-partial .tier-badge {{ background: #0a1a2a; color: #00d4ff; }}
-  .tier-pending .tier-id {{ color: #444; }}
-  .tier-pending .tier-dur {{ color: #444; }}
-  .tier-pending .tier-badge {{ color: #444; }}
-
-  /* Live status + GPU row */
-  .top-row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }}
-  .card {{ background: #12122a; border: 1px solid #1e1e3a; border-radius: 6px; padding: 10px 12px; }}
-  .section-label {{ color: #00d4ff; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }}
-
-  .live-row {{ display: flex; align-items: center; gap: 10px; }}
-  .live-info {{ display: flex; flex-direction: column; gap: 2px; }}
-  .running-badge {{ display: inline-block; background: #332200; color: #ffaa00; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 1em; }}
-  .idle-badge {{ display: inline-block; background: #1a2a1a; color: #00ff88; padding: 4px 12px; border-radius: 4px; }}
-  .exp-name {{ color: #fff; font-weight: bold; }}
-  .pulse {{ animation: pulse 1.5s infinite; }}
-  @keyframes pulse {{ 0%,100% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} }}
-
-  .gpu-name {{ color: #00d4ff; font-weight: bold; }}
-  .gpu-row {{ display: flex; align-items: center; gap: 6px; margin: 3px 0; }}
-  .bar-bg {{ background: #222; border-radius: 3px; height: 10px; flex: 1; max-width: 180px; }}
-  .bar-fill {{ border-radius: 3px; height: 10px; }}
-  .bar-vram {{ background: linear-gradient(90deg, #00d4ff, #00ff88); }}
-  .bar-util {{ background: linear-gradient(90deg, #ffaa00, #ff6644); }}
-
-  /* Tables */
-  table {{ width: 100%; border-collapse: collapse; font-size: 0.88em; }}
-  th {{ color: #00d4ff; text-align: left; padding: 3px 5px; border-bottom: 2px solid #222; font-weight: 600; }}
-  td {{ padding: 3px 5px; border-bottom: 1px solid #161630; }}
-  tr:hover {{ background: #1a1a3e; }}
-  .config-col {{ max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-
-  .best {{ color: #00ff88; font-weight: bold; }}
-  .running {{ color: #ffaa00; }}
-  .done {{ color: #00ff88; }}
-  .failed, .oom {{ color: #ff4444; }}
-  .pending {{ color: #555; }}
-  .dim {{ color: #555; }}
-  .label {{ color: #888; margin-right: 4px; min-width: 35px; }}
-
-  .rank-badge {{ color: #888; font-size: 0.85em; }}
-  .trend-up {{ color: #00ff88; font-weight: bold; }}
-  .trend-down {{ color: #ff4444; font-weight: bold; }}
-  .trend-flat {{ color: #888; }}
-
-  /* Layout */
-  .leaderboards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }}
-  .full-width {{ margin-bottom: 10px; }}
-
-  h3 {{ color: #00d4ff; font-size: 0.9em; margin: 0 0 4px; }}
-  .tier-label {{ color: #00ff88; font-size: 0.8em; }}
-  .sweep-line {{ margin: 3px 0; }}
-  .analysis-summary {{ margin-top: 6px; padding: 8px 10px; background: #08111d; border: 1px solid #18314f; color: #9ec5ff; white-space: pre-wrap; font-size: 0.82em; }}
-  .insight {{ background: #0a1a2a; border-left: 3px solid #00d4ff; padding: 6px 10px; margin: 4px 0; font-size: 0.9em; }}
-  .insight b {{ color: #00ff88; }}
-  .insight .warn {{ color: #ffaa00; }}
-  .legend {{ color: #888; font-size: 0.8em; margin: 4px 0 8px; }}
-  .legend span {{ margin-right: 12px; }}
-</style>
+  <title>LR Transfer Dashboard</title>
+  <meta http-equiv="refresh" content="5">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {{
+      --bg: #f5efe3;
+      --paper: #fffaf0;
+      --ink: #1f2a30;
+      --muted: #6b7477;
+      --line: #d8ccba;
+      --accent: #1f7a8c;
+      --accent-2: #ff6b6b;
+      --accent-3: #f2c14e;
+      --ok: #2a9d5b;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: Georgia, "Iowan Old Style", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #fff7df 0, transparent 30%),
+        linear-gradient(180deg, #f2ebde 0%, var(--bg) 100%);
+    }}
+    .shell {{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }}
+    .hero {{
+      background: linear-gradient(135deg, #fffaf0 0%, #f7f0e5 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 16px 50px rgba(52, 41, 24, 0.08);
+      margin-bottom: 18px;
+    }}
+    .eyebrow {{
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }}
+    h1 {{
+      margin: 0 0 8px;
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+    }}
+    .sub {{
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 900px;
+    }}
+    .hero-grid {{
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 18px;
+      margin-top: 18px;
+    }}
+    .card {{
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(52, 41, 24, 0.05);
+    }}
+    .mini-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }}
+    .mini {{
+      background: #fffdf7;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }}
+    .mini .label {{
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }}
+    .mini .value {{
+      margin-top: 6px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }}
+    .answer {{
+      font-size: 28px;
+      line-height: 1.05;
+      margin-bottom: 8px;
+    }}
+    .answer.good {{ color: var(--ok); }}
+    .answer.warn {{ color: var(--accent-2); }}
+    .muted {{ color: var(--muted); }}
+    .section-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }}
+    .section-title {{
+      margin: 0 0 12px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }}
+    .chart {{
+      width: 100%;
+      height: auto;
+      display: block;
+    }}
+    .grid {{ stroke: #e6dac7; stroke-width: 1; }}
+    .axis-label {{ fill: #746d63; font-size: 12px; }}
+    .point-label {{ fill: #3d3730; font-size: 11px; font-weight: 700; }}
+    .legend-label {{ fill: #3d3730; font-size: 12px; }}
+    .small-label {{ fill: #5e5750; font-size: 11px; }}
+    .stage-label {{ fill: #2e363a; font-size: 14px; font-weight: 700; }}
+    .node-label {{ fill: white; font-size: 12px; font-weight: 700; }}
+    .meter-row {{
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0;
+    }}
+    .meter {{
+      height: 12px;
+      background: #eadfce;
+      border-radius: 999px;
+      overflow: hidden;
+    }}
+    .fill {{ height: 100%; border-radius: 999px; }}
+    .fill-a {{ background: linear-gradient(90deg, var(--accent), #5cb7b2); }}
+    .fill-b {{ background: linear-gradient(90deg, var(--accent-3), var(--accent-2)); }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }}
+    th, td {{
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #eadfce;
+    }}
+    th {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }}
+    .pill {{
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #e9f3f5;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }}
+    .doc-block h2, .doc-block h3, .doc-block h4 {{
+      margin: 0 0 8px;
+      font-size: 18px;
+    }}
+    .doc-block p, .doc-block li {{
+      color: #334046;
+      line-height: 1.45;
+      font-size: 15px;
+    }}
+    .doc-block ul {{
+      margin: 0 0 10px 18px;
+      padding: 0;
+    }}
+    @media (max-width: 900px) {{
+      .hero-grid, .section-grid, .mini-grid {{ grid-template-columns: 1fr; }}
+      .shell {{ padding: 14px 12px 28px; }}
+      .hero {{ padding: 16px; }}
+    }}
+  </style>
 </head>
 <body>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">Live Research Dashboard • {now}</div>
+      <h1>Can 5-second LLM runs predict 20-second winners?</h1>
+      <div class="sub">One page, one question: what the current LR transfer evidence says, what is running, what the next decision is, and why.</div>
+      <div class="mini-grid">
+        <div class="mini"><div class="label">Status</div><div class="value">{html.escape(state)}</div><div class="muted">{html.escape(state_detail)}</div></div>
+        <div class="mini"><div class="label">Progress</div><div class="value">{progress_count}</div><div class="muted">fresh transfer batch</div></div>
+        <div class="mini"><div class="label">Total Train</div><div class="value">{total_train:.0f}s</div><div class="muted">batch_27 only</div></div>
+        <div class="mini"><div class="label">Current Best</div><div class="value">{lr_value(best.get('20s', {})) if best.get('20s') else '-'}</div><div class="muted">20s winner</div></div>
+      </div>
+      <div class="hero-grid">
+        <div class="card">
+          <div class="section-title">Current Answer</div>
+          <div class="answer {'warn' if 'misses' in answer else 'good'}">{html.escape(answer)}</div>
+          <p class="muted">{html.escape(answer_sub)}</p>
+          <div style="margin-top:14px;">
+            <span class="pill">Goal: LR transfer only</span>
+            <span class="pill">Durations: 5s, 10s, 20s</span>
+            <span class="pill">Seed: 42 primary</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title">GPU</div>
+          {gpu_html}
+        </div>
+      </div>
+    </section>
 
-<div class="header">
-    <h1>Scaling Research</h1>
-    <span class="meta">{ts} | {total_exps} experiments | {total_time:.0f}s training | auto-refresh 3s</span>
-</div>
+    <section class="section-grid">
+      <div class="card">
+        <div class="section-title">Loss Across Durations</div>
+        <div class="muted" style="margin-bottom:10px;">Lower is better. This is the cleanest picture of how each LR scales from 5s to 20s.</div>
+        {svg_line_chart(transfer)}
+      </div>
+      <div class="card">
+        <div class="section-title">Gap From Best</div>
+        <div class="muted" style="margin-bottom:10px;">Each bar shows how far a config is from the best loss in this batch. Smaller is better.</div>
+        {svg_gap_chart(transfer)}
+      </div>
+    </section>
 
-<!-- TIER PIPELINE - shows research progress -->
-{pipeline_html}
+    <section class="section-grid">
+      <div class="card">
+        <div class="section-title">Rank Flow</div>
+        <div class="muted" style="margin-bottom:10px;">This answers the transfer question directly: which LR rises or falls as duration increases.</div>
+        {svg_rank_flow(transfer)}
+      </div>
+      <div class="card">
+        <div class="section-title">Fresh Transfer Table</div>
+        <table>
+          <tr><th>Duration</th><th>Winner</th><th>2nd</th><th>3rd</th></tr>
+          <tr><td>5s</td><td>0.008 (6.7637)</td><td>0.012 (6.7772)</td><td>0.006 (6.8935)</td></tr>
+          <tr><td>10s</td><td>0.006 (6.5143)</td><td>0.008 (6.5250)</td><td>0.012 (6.5508)</td></tr>
+          <tr><td>20s</td><td>0.006 (6.2623)</td><td>0.008 (6.2695)</td><td>0.012 (6.2737)</td></tr>
+        </table>
+        <div style="margin-top:14px;" class="muted">
+          Read:
+          <ul>
+            <li>5s favors 0.008</li>
+            <li>10s and 20s both favor 0.006</li>
+            <li>0.006 vs 0.008 at 20s is close enough for an optional tie-break multi-seed check</li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
-<!-- LIVE STATUS + GPU -->
-<div class="top-row">
-  <div class="card">
-    <div class="section-label">Live Status</div>
-    {live_html}
+    <section class="section-grid">
+      <div class="card doc-block">
+        <div class="section-title">Current Progress And Thoughts</div>
+        {render_markdown_block(read_text(DOC_PATHS["plan"]))}
+        {render_markdown_block(read_text(DOC_PATHS["insights"]))}
+      </div>
+      <div class="card doc-block">
+        <div class="section-title">Goals</div>
+        {render_markdown_block(read_text(DOC_PATHS["goal"]))}
+        {render_markdown_block(read_text(DOC_PATHS["life_goals"]))}
+      </div>
+    </section>
   </div>
-  <div class="card">
-    <div class="section-label">GPU</div>
-    {gpu_html}
-  </div>
-</div>
-
-<!-- SWEEP STATUS -->
-<div class="card full-width">
-  <div class="section-label">Duration → LR Sweep Status</div>
-  {render_sweep_status(status, queue, results)}
-</div>
-
-<!-- QUEUE -->
-<div class="card full-width">
-  <div class="section-label">Experiment Queue</div>
-  {queue_html}
-</div>
-
-<!-- LEADERBOARDS -->
-<div class="card full-width">
-  <div class="legend">
-    <b>Scale column:</b>
-    <span class="trend-up">&#9650; Green UP</span> = config ranks HIGHER at longer training (good scaler, trust it)
-    <span class="trend-down">&#9660; Red DOWN</span> = config ranks LOWER at longer training (misleading winner, don't trust)
-    <span class="trend-flat">&#9644; Flat</span> = same rank at longer duration
-  </div>
-</div>
-<div class="leaderboards">
-  {''.join(f"""<div class="card">
-    <h3>{tid}: {dur} {desc} <span class="tier-label">({counts.get(dur,0)} exp)</span></h3>
-    {lb}
-  </div>""" for (tid, dur, desc), lb in leaderboards.items() if counts.get(dur, 0) > 0)}
-</div>
-
-<!-- SCALING TABLE -->
-<div class="card full-width">
-  <div class="section-label">Scaling Analysis - How configs perform across durations (rank trend is key)</div>
-  {scaling_html}
-</div>
-
-<!-- INSIGHTS -->
-<div class="card full-width">
-  <div class="section-label">Key Insights from Scaling Research</div>
-  <div class="insight"><b>120s Winner:</b> bs=4, lr=0.012 (val_loss=4.850). This config was only #6 at 5s but rose to #1 by 60s and held through 120s.</div>
-  <div class="insight"><b>Rankings invert with duration.</b> The 5s winner (gc=0.5) falls to last place by 20s. The 20-30s winner (bs=3) gets overtaken by bs=4 at 60s+. <span class="warn">Never trust short-duration rankings for production.</span></div>
-  <div class="insight"><b>Batch size sweet spot is duration-dependent:</b> bs=3 wins at 20-30s (more steps), bs=4 wins at 60-120s (better gradient signal per step). bs=6 and bs=8 are always worse.</div>
-  <div class="insight"><b>LR is stable:</b> lr=0.010-0.012 works across all durations. Not worth extensive tuning.</div>
-  <div class="insight"><b>Grad clip doesn't scale:</b> gc=0.5 helps at 5s (saves bad early steps) but actively hurts at 20s+ (restricts learning signal).</div>
-  <div class="insight"><b>Weight decay is second-order:</b> wd=0.1 gives small consistent benefit but never makes or breaks a config.</div>
-  <div class="insight"><span class="warn">Implication:</span> For this 88M model, screen at 10-20s (not 5s), use bs=4 + lr=0.012 for any training run over 60s.</div>
-</div>
-
 </body>
-</html>'''
+</html>"""
+    return Response(page, mimetype="text/html")
 
-    return Response(page, mimetype='text/html')
 
-
-if __name__ == '__main__':
-    os.chdir('/root/llm-research-kit')
-    print("Dashboard on http://0.0.0.0:5000 (refresh every 3s)")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+if __name__ == "__main__":
+    os.chdir(ROOT)
+    print("Dashboard on http://0.0.0.0:5000")
+    app.run(host="0.0.0.0", port=5000, debug=False)
