@@ -35,6 +35,7 @@ class LLMConfig:
     muon_momentum: float = 0.95
     adamw_lr: float = 0.006
     warmup_ratio: float = 0.0
+    warmup_steps: Optional[int] = None
     schedule_type: str = "constant"
 
     # Evaluation
@@ -54,4 +55,3 @@ class LLMConfig:
     def __post_init__(self):
         self.d_k = self.d_model // self.n_heads
         assert self.d_model % self.n_heads == 0, "d_model must be divisible by n_heads"
-

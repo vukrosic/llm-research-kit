@@ -12,7 +12,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from configs.llm_config import LLMConfig
 from configs.dataset_config import DataConfig
-from training.trainer import train_model, setup_muon_optimizer
+from training.trainer import train_model, setup_muon_optimizer, get_warmup_steps, build_lr_lambda
 from models.llm import MinimalLLM
 from utils.helpers import set_seed
 from data.loader import setup_tokenizer
@@ -98,22 +98,12 @@ def run_experiment(exp_id, changes=None, train_seconds=5, seed=42):
     total_steps = max(1, int(est_tokens // (
         config.batch_size * config.max_seq_len * config.gradient_accumulation_steps
     )))
-    warmup_steps = max(1, int(total_steps * config.warmup_ratio))
+    warmup_steps = get_warmup_steps(config, total_steps)
     stype = getattr(config, 'schedule_type', 'constant')
 
     schedulers = []
     for opt in optimizers:
-        if stype == 'cosine':
-            fn = lambda s, w=warmup_steps, t=total_steps: (
-                (s / w) if s < w else
-                0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (s - w) / max(1, t - w)))
-            )
-        elif stype == 'linear':
-            fn = lambda s, w=warmup_steps, t=total_steps: (
-                (s / w) if s < w else max(0.1, 1.0 - (s - w) / max(1, t - w))
-            )
-        else:
-            fn = lambda s, w=warmup_steps: s / w if s < w else 1.0
+        fn = build_lr_lambda(stype, warmup_steps, total_steps)
         schedulers.append(torch.optim.lr_scheduler.LambdaLR(opt, fn))
 
     # Train

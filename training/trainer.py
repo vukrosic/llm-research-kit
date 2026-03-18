@@ -72,6 +72,32 @@ def setup_muon_optimizer(model: nn.Module, config: LLMConfig):
     return [muon_optimizer, adamw_optimizer]
 
 
+def get_warmup_steps(config: LLMConfig, total_steps: int) -> int:
+    """
+    Prefer an explicit warmup step count when provided.
+
+    This keeps short-budget experiments on an exact schedule rather than a
+    ratio-based approximation, which can drift a lot for time-limited runs.
+    """
+    warmup_steps = getattr(config, "warmup_steps", None)
+    if warmup_steps is None:
+        warmup_steps = max(1, int(total_steps * config.warmup_ratio))
+    return max(1, min(int(warmup_steps), max(1, int(total_steps))))
+
+
+def build_lr_lambda(schedule_type: str, warmup_steps: int, total_steps: int):
+    if schedule_type == 'cosine':
+        return lambda s, w=warmup_steps, t=total_steps: (
+            (s / w) if s < w else
+            0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (s - w) / max(1, t - w)))
+        )
+    if schedule_type == 'linear':
+        return lambda s, w=warmup_steps, t=total_steps: (
+            (s / w) if s < w else max(0.1, 1.0 - (s - w) / max(1, t - w))
+        )
+    return lambda s, w=warmup_steps: s / w if s < w else 1.0
+
+
 def train_model(
     model: nn.Module,
     config: LLMConfig,
@@ -510,27 +536,12 @@ def train_minimal_llm(
     # Tokens per optimization step
     tokens_per_opt = config.batch_size * config.max_seq_len * config.gradient_accumulation_steps
     total_steps = config.train_tokens // tokens_per_opt
-    warmup_steps = max(1, int(total_steps * config.warmup_ratio))
+    warmup_steps = get_warmup_steps(config, total_steps)
     schedule_type = getattr(config, 'schedule_type', 'cosine')
     
     schedulers = []
     for optimizer in optimizers:
-        if schedule_type == 'cosine':
-            def lr_lambda(current_step, warmup=warmup_steps, total=total_steps):
-                if current_step < warmup:
-                    return current_step / warmup
-                progress = (current_step - warmup) / max(1, total - warmup)
-                return 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * progress))
-        elif schedule_type == 'linear':
-            def lr_lambda(current_step, warmup=warmup_steps, total=total_steps):
-                if current_step < warmup:
-                    return current_step / warmup
-                progress = (current_step - warmup) / max(1, total - warmup)
-                return max(0.1, 1.0 - progress)
-        else:  # constant
-            def lr_lambda(current_step, warmup=warmup_steps):
-                return current_step / warmup if current_step < warmup else 1.0
-        
+        lr_lambda = build_lr_lambda(schedule_type, warmup_steps, total_steps)
         schedulers.append(torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda))
 
     # ============================================
