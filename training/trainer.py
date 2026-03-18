@@ -284,8 +284,8 @@ def train_model(
 
     pbar.close()
 
-    # Final evaluation (if not stopped early)
-    if not stopped_early or tokens_seen >= config.train_tokens:
+    # Final evaluation — always run, even if stopped early (time limit)
+    if True:
         final_eval = evaluate_model(model, val_loader, config)
         final_eval['train_loss'] = current_loss_val
         elapsed_time = (time.time() - train_start_time) / 60
