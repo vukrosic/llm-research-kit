@@ -163,17 +163,30 @@ Check if plan.md, leaderboard.md, experiment_log.md, queue.json, insights.md fol
 
 ## 15. How To Optimize
 
-Run 5 experiments at a time, analyzing after each batch, then designing the next 5 based on what we learned. Each experiment trains the model for 5 seconds and measures final training loss. We keep a leaderboard of the best configs.
+Run 5 experiments at a time, analyzing after each batch. Each experiment has a **hard time limit of 5 seconds**. Use val_loss as the primary metric. Fixed seed=42 for determinism — any improvement is real.
 
-### Key Strategy: Trade Capacity for Speed
-In 5-second training, iteration count matters more than model capacity. Every winning change has been about making the model faster:
-- **noise_scale=0.05**: Easier denoising task → faster convergence
-- **depth=1**: Single transformer layer → maximum iterations per second
-- **P_mean=-2.0**: Focus on easy (high-noise) timesteps → fast coarse learning
-- **no in-context tokens**: Fewer tokens per attention → faster iterations
-- **shared_adaln**: Fewer params → faster iterations
+### Workflow
+1. **Screen at 5s** — run ALL hyperparameter exploration at 5s. Exhaust each HP category before moving to the next.
+2. **Validate winners at 10s and 20s** — after accumulating several 5s winners, re-run the top configs at 10s (500K tokens) and 20s (1M tokens) to study scaling behavior.
+3. **Separate leaderboards** per duration — track how rankings change across scales.
+4. **Record scaling observations** — how do optimal HPs shift with duration? This IS the research goal.
 
-## 16. Dashboard Setup
+### Scaling Laws Research
+The goal is discovering how optimal scaling laws.
+
+## 16. Multi-Scale Validation Strategy
+
+Do ALL exploration at 5s first. Only after finding winners, validate at longer scales.
+
+### Rules
+- Explore exhaustively at 5s before promoting
+- After 5s experiments, scale good ones or winners to 10s and 20s
+- Track in insights.md
+- If a 5s winner fails at 10s/20s, investigate why (scaling law violation = interesting finding)
+
+---
+
+## 17. Dashboard Setup
 
 ### Running the Dashboard
 ```bash
