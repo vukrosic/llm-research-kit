@@ -245,3 +245,6 @@ my-life/
 
 # GitHub App credentials
 gha-creds-*.json
+
+# External repos
+parameter-golf/
