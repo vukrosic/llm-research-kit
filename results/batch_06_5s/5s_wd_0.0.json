@@ -1,0 +1,21 @@
+{
+  "exp_id": "5s_wd_0.0",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.8518218994140625,
+  "val_loss": 6.95596022605896,
+  "val_acc": 0.12592818759159746,
+  "val_ppl": 1049.3857018191904,
+  "training_time": 7.208146810531616,
+  "wall_time": 7.211491584777832,
+  "steps": 16,
+  "tokens_seen": 262144,
+  "tokens_per_second": 36367.73873930938,
+  "train_tokens": 250000,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003,
+    "weight_decay": 0.0
+  }
+}

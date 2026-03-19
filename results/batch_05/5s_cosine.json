@@ -1,0 +1,21 @@
+{
+  "exp_id": "5s_cosine",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.965461254119873,
+  "val_loss": 7.057966518402099,
+  "val_acc": 0.1306912554958476,
+  "val_ppl": 1162.0796938433723,
+  "training_time": 5.9461705684661865,
+  "wall_time": 5.950083255767822,
+  "steps": 16,
+  "tokens_seen": 262144,
+  "tokens_per_second": 44086.189082803256,
+  "train_tokens": 250000,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003,
+    "schedule_type": "cosine"
+  }
+}

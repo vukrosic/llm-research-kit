@@ -1,0 +1,173 @@
+[
+  {
+    "exp_id": "5s_bs4_lr0.006",
+    "hypothesis": "Short-run check for whether 0.006 already competes at 5s",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.893452,
+    "train_loss": 10.898006,
+    "training_time": 5.51,
+    "wall_time": 5.52,
+    "steps": 29,
+    "tokens_per_second": 43119
+  },
+  {
+    "exp_id": "5s_bs4_lr0.008",
+    "hypothesis": "Short-run check for whether 0.008 beats 0.006 and approaches 0.012 at 5s",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.763695,
+    "train_loss": 10.898006,
+    "training_time": 5.47,
+    "wall_time": 5.48,
+    "steps": 38,
+    "tokens_per_second": 56913
+  },
+  {
+    "exp_id": "5s_bs4_lr0.012",
+    "hypothesis": "Reference short-run winner candidate at 5s",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.777225,
+    "train_loss": 10.898006,
+    "training_time": 5.51,
+    "wall_time": 5.51,
+    "steps": 38,
+    "tokens_per_second": 56514
+  },
+  {
+    "exp_id": "10s_bs4_lr0.006",
+    "hypothesis": "Intermediate transfer check for 0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.514325,
+    "train_loss": 10.898006,
+    "training_time": 10.58,
+    "wall_time": 10.58,
+    "steps": 77,
+    "tokens_per_second": 59632
+  },
+  {
+    "exp_id": "10s_bs4_lr0.008",
+    "hypothesis": "Intermediate transfer check for 0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.525024,
+    "train_loss": 10.898006,
+    "training_time": 10.59,
+    "wall_time": 10.59,
+    "steps": 77,
+    "tokens_per_second": 59573
+  },
+  {
+    "exp_id": "10s_bs4_lr0.012",
+    "hypothesis": "Intermediate transfer check for 0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.550781,
+    "train_loss": 10.898006,
+    "training_time": 10.5,
+    "wall_time": 10.5,
+    "steps": 75,
+    "tokens_per_second": 58533
+  },
+  {
+    "exp_id": "20s_bs4_lr0.006",
+    "hypothesis": "Target-tier comparison for 0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.262276,
+    "train_loss": 6.676361,
+    "training_time": 20.48,
+    "wall_time": 20.49,
+    "steps": 152,
+    "tokens_per_second": 60803
+  },
+  {
+    "exp_id": "20s_bs4_lr0.008",
+    "hypothesis": "Target-tier comparison for 0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.269522,
+    "train_loss": 6.691359,
+    "training_time": 20.58,
+    "wall_time": 20.59,
+    "steps": 152,
+    "tokens_per_second": 60491
+  },
+  {
+    "exp_id": "20s_bs4_lr0.012",
+    "hypothesis": "Target-tier comparison for 0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_27_lr_transfer",
+    "status": "done",
+    "val_loss": 6.273681,
+    "train_loss": 6.709924,
+    "training_time": 20.56,
+    "wall_time": 20.57,
+    "steps": 151,
+    "tokens_per_second": 60163
+  }
+]

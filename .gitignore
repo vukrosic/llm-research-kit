@@ -225,17 +225,27 @@ processed_data_debug/
 logs/
 logs_debug/
 *.arrow
-# We probably want to ignore most json files generated in data processing, but keep config/results
-# For now, following user request strictly to ignore json
-*.json
+# Generated experiment images (loss/debug plots)
+results/**/plots/
+results/**/loss*.png
+artifacts/**/*.png
+plots/*png
+
+# Generated JSON artifacts (metrics/cache dumps)
+results/**/raw_metrics*.json
+results/**/metrics*.json
+artifacts/**/*.json
+cache/**/*.json
+
+# Keep curated/reproducible JSON
 !benchmark_comparison_results.json
-# Keep all JSON files in baselines folder
+!results/**/summary*.json
 !baselines/*.json
 !baselines/**/*.json
-# Keep all JSON files in plots folder (benchmark results)
 !plots/*.json
 !plots/**/*.json
 !docs/timecapsule/**/*
+!**/*config*.json
 
 # gemini-cli settings
 .gemini/

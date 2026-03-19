@@ -1,0 +1,17 @@
+{
+  "exp_id": "calibrate_01",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.105594158172607,
+  "val_loss": 6.123004817962647,
+  "val_acc": 0.15871397166585247,
+  "val_ppl": 456.23353563341374,
+  "training_time": 79.00764036178589,
+  "wall_time": 79.00903916358948,
+  "steps": 123,
+  "tokens_seen": 2015232,
+  "tokens_per_second": 25506.79897250443,
+  "train_tokens": 2000000,
+  "total_params": 88630528,
+  "changes": {}
+}

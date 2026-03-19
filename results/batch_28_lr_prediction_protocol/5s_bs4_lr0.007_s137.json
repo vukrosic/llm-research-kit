@@ -1,0 +1,21 @@
+{
+  "exp_id": "5s_bs4_lr0.007_s137",
+  "status": "done",
+  "seed": 137,
+  "train_loss": 10.888091087341309,
+  "val_loss": 6.759692192077637,
+  "val_acc": 0.13536883243771372,
+  "val_ppl": 862.3767085488425,
+  "training_time": 5.562822580337524,
+  "wall_time": 5.568258047103882,
+  "steps": 38,
+  "tokens_seen": 311296,
+  "tokens_per_second": 55960.08060733659,
+  "train_seconds": 5,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.007,
+    "adamw_lr": 0.00175,
+    "batch_size": 4
+  }
+}

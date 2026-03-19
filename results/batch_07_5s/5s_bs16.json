@@ -1,0 +1,11 @@
+{
+  "exp_id": "5s_bs16",
+  "status": "oom",
+  "changes": {
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003,
+    "batch_size": 16
+  },
+  "error": "CUDA OOM",
+  "wall_time": 1.0229604244232178
+}

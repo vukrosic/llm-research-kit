@@ -1,0 +1,17 @@
+{
+  "exp_id": "baseline_s123",
+  "status": "done",
+  "seed": 123,
+  "train_loss": 6.299276828765869,
+  "val_loss": 6.4379339694976805,
+  "val_acc": 0.14587200781631657,
+  "val_ppl": 625.1139602390855,
+  "training_time": 19.650431632995605,
+  "wall_time": 19.65507698059082,
+  "steps": 62,
+  "tokens_seen": 1015808,
+  "tokens_per_second": 51693.92810152463,
+  "train_tokens": 1000000,
+  "total_params": 88630528,
+  "changes": {}
+}

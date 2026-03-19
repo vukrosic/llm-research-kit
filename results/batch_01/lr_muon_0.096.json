@@ -1,0 +1,20 @@
+{
+  "exp_id": "lr_muon_0.096",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.800515174865723,
+  "val_loss": 6.61249680519104,
+  "val_acc": 0.13845872007816318,
+  "val_ppl": 744.339170432357,
+  "training_time": 19.635072708129883,
+  "wall_time": 19.638838529586792,
+  "steps": 62,
+  "tokens_seen": 1015808,
+  "tokens_per_second": 51734.36406881273,
+  "train_tokens": 1000000,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.096,
+    "adamw_lr": 0.024
+  }
+}

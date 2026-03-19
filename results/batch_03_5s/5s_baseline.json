@@ -1,0 +1,17 @@
+{
+  "exp_id": "5s_baseline",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.936347484588623,
+  "val_loss": 7.071663665771484,
+  "val_acc": 0.11951636541279922,
+  "val_ppl": 1178.1063800406932,
+  "training_time": 7.272161483764648,
+  "wall_time": 7.276714086532593,
+  "steps": 16,
+  "tokens_seen": 262144,
+  "tokens_per_second": 36047.60435879285,
+  "train_tokens": 250000,
+  "total_params": 88630528,
+  "changes": {}
+}

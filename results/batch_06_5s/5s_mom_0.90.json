@@ -1,0 +1,21 @@
+{
+  "exp_id": "5s_mom_0.90",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.847539901733398,
+  "val_loss": 6.955896806716919,
+  "val_acc": 0.12647166585246702,
+  "val_ppl": 1049.3191525787106,
+  "training_time": 5.866709470748901,
+  "wall_time": 5.870522499084473,
+  "steps": 16,
+  "tokens_seen": 262144,
+  "tokens_per_second": 44683.31034748455,
+  "train_tokens": 250000,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003,
+    "muon_momentum": 0.9
+  }
+}

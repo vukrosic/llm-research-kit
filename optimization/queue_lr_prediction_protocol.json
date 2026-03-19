@@ -1,0 +1,686 @@
+[
+  {
+    "exp_id": "5s_bs4_lr0.005_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.930983,
+    "train_loss": 10.898006,
+    "training_time": 5.48,
+    "wall_time": 5.49,
+    "steps": 29,
+    "tokens_per_second": 43322
+  },
+  {
+    "exp_id": "5s_bs4_lr0.006_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.767325,
+    "train_loss": 10.898006,
+    "training_time": 5.48,
+    "wall_time": 5.48,
+    "steps": 38,
+    "tokens_per_second": 56844
+  },
+  {
+    "exp_id": "5s_bs4_lr0.007_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.764981,
+    "train_loss": 10.898006,
+    "training_time": 5.48,
+    "wall_time": 5.48,
+    "steps": 38,
+    "tokens_per_second": 56842
+  },
+  {
+    "exp_id": "5s_bs4_lr0.008_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.764066,
+    "train_loss": 10.898006,
+    "training_time": 5.5,
+    "wall_time": 5.5,
+    "steps": 38,
+    "tokens_per_second": 56628
+  },
+  {
+    "exp_id": "5s_bs4_lr0.010_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.765636,
+    "train_loss": 10.898006,
+    "training_time": 5.48,
+    "wall_time": 5.49,
+    "steps": 38,
+    "tokens_per_second": 56777
+  },
+  {
+    "exp_id": "5s_bs4_lr0.012_s42",
+    "hypothesis": "Fixed-grid benchmark: 5s rank and regret signal at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.776702,
+    "train_loss": 10.898006,
+    "training_time": 5.5,
+    "wall_time": 5.51,
+    "steps": 38,
+    "tokens_per_second": 56584
+  },
+  {
+    "exp_id": "10s_bs4_lr0.005_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.521374,
+    "train_loss": 10.898006,
+    "training_time": 10.58,
+    "wall_time": 10.58,
+    "steps": 77,
+    "tokens_per_second": 59637
+  },
+  {
+    "exp_id": "10s_bs4_lr0.006_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.517811,
+    "train_loss": 10.898006,
+    "training_time": 10.47,
+    "wall_time": 10.47,
+    "steps": 75,
+    "tokens_per_second": 58695
+  },
+  {
+    "exp_id": "10s_bs4_lr0.007_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.513368,
+    "train_loss": 10.898006,
+    "training_time": 10.48,
+    "wall_time": 10.49,
+    "steps": 76,
+    "tokens_per_second": 59405
+  },
+  {
+    "exp_id": "10s_bs4_lr0.008_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.524369,
+    "train_loss": 10.898006,
+    "training_time": 10.53,
+    "wall_time": 10.54,
+    "steps": 75,
+    "tokens_per_second": 58322
+  },
+  {
+    "exp_id": "10s_bs4_lr0.010_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.530666,
+    "train_loss": 10.898006,
+    "training_time": 10.51,
+    "wall_time": 10.52,
+    "steps": 76,
+    "tokens_per_second": 59213
+  },
+  {
+    "exp_id": "10s_bs4_lr0.012_s42",
+    "hypothesis": "Fixed-grid benchmark: 10s rank and regret signal at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.550087,
+    "train_loss": 10.898006,
+    "training_time": 10.53,
+    "wall_time": 10.54,
+    "steps": 75,
+    "tokens_per_second": 58331
+  },
+  {
+    "exp_id": "20s_bs4_lr0.005_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.267791,
+    "train_loss": 6.682924,
+    "training_time": 20.55,
+    "wall_time": 20.56,
+    "steps": 152,
+    "tokens_per_second": 60582
+  },
+  {
+    "exp_id": "20s_bs4_lr0.006_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.262635,
+    "train_loss": 6.676616,
+    "training_time": 20.55,
+    "wall_time": 20.55,
+    "steps": 152,
+    "tokens_per_second": 60595
+  },
+  {
+    "exp_id": "20s_bs4_lr0.007_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.263853,
+    "train_loss": 6.688113,
+    "training_time": 20.56,
+    "wall_time": 20.57,
+    "steps": 152,
+    "tokens_per_second": 60551
+  },
+  {
+    "exp_id": "20s_bs4_lr0.008_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.275124,
+    "train_loss": 6.691433,
+    "training_time": 20.5,
+    "wall_time": 20.5,
+    "steps": 151,
+    "tokens_per_second": 60343
+  },
+  {
+    "exp_id": "20s_bs4_lr0.010_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.277954,
+    "train_loss": 6.711056,
+    "training_time": 20.5,
+    "wall_time": 20.5,
+    "steps": 151,
+    "tokens_per_second": 60355
+  },
+  {
+    "exp_id": "20s_bs4_lr0.012_s42",
+    "hypothesis": "Fixed-grid benchmark: 20s target-tier outcome at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 42,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.273376,
+    "train_loss": 6.710083,
+    "training_time": 20.5,
+    "wall_time": 20.51,
+    "steps": 151,
+    "tokens_per_second": 60332
+  },
+  {
+    "exp_id": "5s_bs4_lr0.005_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.779707,
+    "train_loss": 10.888091,
+    "training_time": 5.55,
+    "wall_time": 5.55,
+    "steps": 38,
+    "tokens_per_second": 56108
+  },
+  {
+    "exp_id": "5s_bs4_lr0.006_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.784215,
+    "train_loss": 10.888091,
+    "training_time": 5.58,
+    "wall_time": 5.58,
+    "steps": 37,
+    "tokens_per_second": 54365
+  },
+  {
+    "exp_id": "5s_bs4_lr0.007_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.759692,
+    "train_loss": 10.888091,
+    "training_time": 5.56,
+    "wall_time": 5.57,
+    "steps": 38,
+    "tokens_per_second": 55960
+  },
+  {
+    "exp_id": "5s_bs4_lr0.008_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.762905,
+    "train_loss": 10.888091,
+    "training_time": 5.54,
+    "wall_time": 5.55,
+    "steps": 38,
+    "tokens_per_second": 56154
+  },
+  {
+    "exp_id": "5s_bs4_lr0.010_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.775543,
+    "train_loss": 10.888091,
+    "training_time": 5.56,
+    "wall_time": 5.56,
+    "steps": 38,
+    "tokens_per_second": 56019
+  },
+  {
+    "exp_id": "5s_bs4_lr0.012_s137",
+    "hypothesis": "Second-seed benchmark: 5s rank and regret signal at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 5,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.810499,
+    "train_loss": 10.888091,
+    "training_time": 5.63,
+    "wall_time": 5.63,
+    "steps": 37,
+    "tokens_per_second": 53872
+  },
+  {
+    "exp_id": "10s_bs4_lr0.005_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.530663,
+    "train_loss": 10.888091,
+    "training_time": 10.56,
+    "wall_time": 10.56,
+    "steps": 76,
+    "tokens_per_second": 58967
+  },
+  {
+    "exp_id": "10s_bs4_lr0.006_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.535408,
+    "train_loss": 10.888091,
+    "training_time": 10.49,
+    "wall_time": 10.49,
+    "steps": 75,
+    "tokens_per_second": 58586
+  },
+  {
+    "exp_id": "10s_bs4_lr0.007_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.534456,
+    "train_loss": 10.888091,
+    "training_time": 10.58,
+    "wall_time": 10.59,
+    "steps": 76,
+    "tokens_per_second": 58839
+  },
+  {
+    "exp_id": "10s_bs4_lr0.008_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.543496,
+    "train_loss": 10.888091,
+    "training_time": 10.59,
+    "wall_time": 10.59,
+    "steps": 76,
+    "tokens_per_second": 58813
+  },
+  {
+    "exp_id": "10s_bs4_lr0.010_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.563096,
+    "train_loss": 10.888091,
+    "training_time": 10.59,
+    "wall_time": 10.6,
+    "steps": 76,
+    "tokens_per_second": 58790
+  },
+  {
+    "exp_id": "10s_bs4_lr0.012_s137",
+    "hypothesis": "Second-seed benchmark: 10s rank and regret signal at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 10,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.587513,
+    "train_loss": 10.888091,
+    "training_time": 10.58,
+    "wall_time": 10.59,
+    "steps": 75,
+    "tokens_per_second": 58068
+  },
+  {
+    "exp_id": "20s_bs4_lr0.005_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.005",
+    "changes": {
+      "muon_lr": 0.005,
+      "adamw_lr": 0.00125,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.275967,
+    "train_loss": 6.440937,
+    "training_time": 20.52,
+    "wall_time": 20.53,
+    "steps": 151,
+    "tokens_per_second": 60268
+  },
+  {
+    "exp_id": "20s_bs4_lr0.006_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.006",
+    "changes": {
+      "muon_lr": 0.006,
+      "adamw_lr": 0.0015,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.273116,
+    "train_loss": 6.451076,
+    "training_time": 20.5,
+    "wall_time": 20.5,
+    "steps": 151,
+    "tokens_per_second": 60353
+  },
+  {
+    "exp_id": "20s_bs4_lr0.007_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.007",
+    "changes": {
+      "muon_lr": 0.007,
+      "adamw_lr": 0.00175,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.273209,
+    "train_loss": 6.456265,
+    "training_time": 20.53,
+    "wall_time": 20.54,
+    "steps": 151,
+    "tokens_per_second": 60241
+  },
+  {
+    "exp_id": "20s_bs4_lr0.008_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.008",
+    "changes": {
+      "muon_lr": 0.008,
+      "adamw_lr": 0.002,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.286393,
+    "train_loss": 6.467158,
+    "training_time": 20.55,
+    "wall_time": 20.56,
+    "steps": 151,
+    "tokens_per_second": 60195
+  },
+  {
+    "exp_id": "20s_bs4_lr0.010_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.010",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.291695,
+    "train_loss": 6.475615,
+    "training_time": 20.56,
+    "wall_time": 20.57,
+    "steps": 150,
+    "tokens_per_second": 59760
+  },
+  {
+    "exp_id": "20s_bs4_lr0.012_s137",
+    "hypothesis": "Second-seed benchmark: 20s target-tier outcome at lr=0.012",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 20,
+    "seed": 137,
+    "batch": "batch_28_lr_prediction_protocol",
+    "status": "done",
+    "val_loss": 6.285462,
+    "train_loss": 6.472927,
+    "training_time": 20.5,
+    "wall_time": 20.51,
+    "steps": 150,
+    "tokens_per_second": 59938
+  }
+]

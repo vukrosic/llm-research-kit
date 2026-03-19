@@ -1,0 +1,17 @@
+{
+  "exp_id": "baseline_s7",
+  "status": "done",
+  "seed": 7,
+  "train_loss": 6.285114288330078,
+  "val_loss": 6.4818188667297365,
+  "val_acc": 0.14331338544211042,
+  "val_ppl": 653.1578736382253,
+  "training_time": 19.571412563323975,
+  "wall_time": 19.575459718704224,
+  "steps": 62,
+  "tokens_seen": 1015808,
+  "tokens_per_second": 51902.64099299519,
+  "train_tokens": 1000000,
+  "total_params": 88630528,
+  "changes": {}
+}

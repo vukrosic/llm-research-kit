@@ -1,0 +1,17 @@
+{
+  "exp_id": "baseline_s42",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.636205196380615,
+  "val_loss": 6.4691441535949705,
+  "val_acc": 0.14527357107962874,
+  "val_ppl": 644.9315283701308,
+  "training_time": 20.827985525131226,
+  "wall_time": 20.83178186416626,
+  "steps": 62,
+  "tokens_seen": 1015808,
+  "tokens_per_second": 48771.30333964931,
+  "train_tokens": 1000000,
+  "total_params": 88630528,
+  "changes": {}
+}

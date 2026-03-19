@@ -1,0 +1,22 @@
+{
+  "exp_id": "5s_cosine_warmup",
+  "status": "done",
+  "seed": 42,
+  "train_loss": 6.965694904327393,
+  "val_loss": 7.058267593383789,
+  "val_acc": 0.1306790425012213,
+  "val_ppl": 1162.4296196402263,
+  "training_time": 5.867754220962524,
+  "wall_time": 5.872783422470093,
+  "steps": 16,
+  "tokens_seen": 262144,
+  "tokens_per_second": 44675.35451016196,
+  "train_tokens": 250000,
+  "total_params": 88630528,
+  "changes": {
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003,
+    "schedule_type": "cosine",
+    "warmup_ratio": 0.1
+  }
+}

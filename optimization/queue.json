@@ -1,0 +1,59 @@
+[
+  {
+    "exp_id": "45s_bs4_lr0.012",
+    "hypothesis": "Validate constant LR=0.012 at unseen 45s duration",
+    "changes": {
+      "muon_lr": 0.012,
+      "adamw_lr": 0.003,
+      "batch_size": 4
+    },
+    "train_seconds": 45,
+    "seed": 42,
+    "batch": "batch_26_lr_validation",
+    "status": "done",
+    "val_loss": 5.638109,
+    "train_loss": 5.626113,
+    "training_time": 45.64,
+    "wall_time": 45.64,
+    "steps": 336,
+    "tokens_per_second": 60313
+  },
+  {
+    "exp_id": "45s_bs4_lr0.010",
+    "hypothesis": "Compare LR=0.010 at 45s \u2014 should be within noise of 0.012",
+    "changes": {
+      "muon_lr": 0.01,
+      "adamw_lr": 0.0025,
+      "batch_size": 4
+    },
+    "train_seconds": 45,
+    "seed": 42,
+    "batch": "batch_26_lr_validation",
+    "status": "done",
+    "val_loss": 5.650167,
+    "train_loss": 5.646037,
+    "training_time": 45.53,
+    "wall_time": 45.54,
+    "steps": 342,
+    "tokens_per_second": 61531
+  },
+  {
+    "exp_id": "45s_bs4_lr0.016",
+    "hypothesis": "Compare LR=0.016 at 45s \u2014 should be within noise of 0.012",
+    "changes": {
+      "muon_lr": 0.016,
+      "adamw_lr": 0.004,
+      "batch_size": 4
+    },
+    "train_seconds": 45,
+    "seed": 42,
+    "batch": "batch_26_lr_validation",
+    "status": "done",
+    "val_loss": 5.632085,
+    "train_loss": 5.63188,
+    "training_time": 45.46,
+    "wall_time": 45.47,
+    "steps": 340,
+    "tokens_per_second": 61262
+  }
+]

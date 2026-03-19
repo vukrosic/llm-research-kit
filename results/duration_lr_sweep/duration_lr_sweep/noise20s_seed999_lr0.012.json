@@ -1,0 +1,25 @@
+{
+  "exp_id": "noise20s_seed999_lr0.012",
+  "status": "done",
+  "seed": 999,
+  "train_loss": 6.5843281745910645,
+  "val_loss": 6.318963861465454,
+  "val_acc": 0.1507083536883244,
+  "val_ppl": 554.9976399890734,
+  "training_time": 20.499237298965454,
+  "wall_time": 20.50525975227356,
+  "steps": 151,
+  "tokens_seen": 1236992,
+  "tokens_per_second": 60343.318239573135,
+  "train_seconds": 20,
+  "total_params": 88630528,
+  "changes": {
+    "batch_size": 4,
+    "weight_decay": 0.2,
+    "compile_model": false,
+    "schedule_type": "constant",
+    "warmup_steps": 50,
+    "muon_lr": 0.012,
+    "adamw_lr": 0.003
+  }
+}
