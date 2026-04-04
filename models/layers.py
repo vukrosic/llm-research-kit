@@ -1,21 +1,47 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchtune.modules import RotaryPositionalEmbeddings
 from .components import SquaredReLUFeedForward, FeedForward, SwiGLUFFN
+
+
+class RotaryPositionalEmbeddings(nn.Module):
+    """Minimal self-contained RoPE — no torchtune/torchao dependency.
+
+    Input / output shape: [B, T, H, D]  (batch, seq, heads, head_dim)
+    """
+
+    def __init__(self, dim: int, max_seq_len: int, base: int = 10000):
+        super().__init__()
+        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32) / dim))
+        self.register_buffer("inv_freq", inv_freq, persistent=False)
+        self._build_cache(max_seq_len)
+
+    def _build_cache(self, seq_len: int):
+        t = torch.arange(seq_len, device=self.inv_freq.device, dtype=self.inv_freq.dtype)
+        freqs = torch.outer(t, self.inv_freq)          # [T, D/2]
+        emb = torch.cat([freqs, freqs], dim=-1)        # [T, D]
+        self.register_buffer("cos_cached", emb.cos()[None, :, None, :], persistent=False)
+        self.register_buffer("sin_cached", emb.sin()[None, :, None, :], persistent=False)
+
+    @staticmethod
+    def _rotate_half(x: torch.Tensor) -> torch.Tensor:
+        x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
+        return torch.cat([-x2, x1], dim=-1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: [B, T, H, D]
+        T = x.size(1)
+        cos = self.cos_cached[:, :T].to(x.dtype)
+        sin = self.sin_cached[:, :T].to(x.dtype)
+        return x * cos + self._rotate_half(x) * sin
 
 
 class Rotary(nn.Module):
     def __init__(self, dim: int, max_seq_len: int):
         super().__init__()
-        self.rope = RotaryPositionalEmbeddings(
-            dim=dim, max_seq_len=max_seq_len, base=10000
-        )
+        self.rope = RotaryPositionalEmbeddings(dim=dim, max_seq_len=max_seq_len, base=10000)
 
     def forward(self, x_BTHD: torch.Tensor):
-        # x_BTHD shape: [B, T, H, D] - need to convert to [B, T, H, D] for torchtune
-        # torchtune expects [batch, seq_len, num_heads, head_dim]
-        # Our input is already [B, T, H, D] which matches torchtune's expectation
         return self.rope(x_BTHD)
 
 
