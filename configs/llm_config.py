@@ -11,8 +11,11 @@ class LLMConfig:
     d_ff: int = 2048         
     
     # GQA parameters
-    n_kv_heads: int = 4      
-    
+    n_kv_heads: int = 4
+
+    # Activation function: "squared_relu", "relu", "gelu", "silu", "swiglu"
+    ffn_activation: str = "squared_relu"
+
     # Data params
     # ⚠️ WARNING: For simplicity, I recomend not changing max_seq_len
     # If you change max_seq_len, you MUST re-run data preparation!

@@ -218,6 +218,7 @@ def main():
     parser.add_argument("--log_every", type=int, default=100, help="Logging frequency in steps")
     parser.add_argument("--warmup", type=str, default="true", help="Whether to perform untimed compilation warmup (true/false)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
+    parser.add_argument("--activation", type=str, default=None, help="FFN activation: squared_relu, relu, gelu, silu, swiglu")
 
     args = parser.parse_args()
 
@@ -287,6 +288,8 @@ def main():
     # Allow command line override ONLY if explicitly provided (argparse default check)
     if args.log_every != 100: # 100 is the default in parser
         config.log_every = args.log_every
+    if args.activation is not None:
+        config.ffn_activation = args.activation
     
     use_warmup = (args.warmup.lower() == "true")
 

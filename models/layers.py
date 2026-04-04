@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchtune.modules import RotaryPositionalEmbeddings
-from .components import SquaredReLUFeedForward
+from .components import SquaredReLUFeedForward, FeedForward, SwiGLUFFN
 
 
 class Rotary(nn.Module):
@@ -116,11 +116,17 @@ class TransformerBlock(nn.Module):
         max_seq_len: int,
         dropout: float = 0.1,
         n_kv_heads: int | None = None,
+        ffn_activation: str = "squared_relu",
     ):
         super().__init__()
 
         self.attention = MultiHeadAttention(d_model, n_heads, max_seq_len, dropout, n_kv_heads)
-        self.feed_forward = SquaredReLUFeedForward(d_model, d_ff, dropout)
+
+        # Select FFN based on activation
+        if ffn_activation == "swiglu":
+            self.feed_forward = SwiGLUFFN(d_model, d_ff, dropout)
+        else:
+            self.feed_forward = FeedForward(d_model, d_ff, dropout, ffn_activation)
 
         # Normalization layers
         self.norm1 = nn.RMSNorm(d_model)
