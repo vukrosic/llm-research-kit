@@ -2,59 +2,51 @@
 
 ## Active Goal
 
-activation-discovery → lr-schedule → combination → H3 validation
+Autonomous research loop — improving 88M LLM val_loss on TITAN X Pascal.
+User instruction: "continue forever"
 
 ## Running Work
 
-- **H3 validation** (in background, ~90 min remaining):
-  - relu + constant LR at 8M tokens → does relu gain persist at longer training?
-  - relu + cosine LR at 8M tokens → does cosine help more at longer training?
+**H10: Fine-grained momentum sweep** (PID=164639, /tmp/h10.log)
+- Testing momentum ∈ {0.80, 0.85, 0.92} vs reference 0.90 (val_loss=4.7952)
+- Full-attn + squared_relu + cosine, 8M tokens
+- ETA: ~2 hours (3 × ~42 min runs)
 
-## Completed Experiments (2026-04-04)
+## Latest Findings (2026-04-05)
 
-### Experiment 1: Activation Function Sweep (2M tokens)
-| Rank | Activation   | val_loss | Δ vs baseline |
-|------|--------------|----------|---------------|
-| 1    | relu         | 6.0598   | −0.049        |
-| 2    | gelu         | 6.0713   | −0.037        |
-| 3    | silu         | 6.0777   | −0.031        |
-| 4    | swiglu       | 6.0995   | −0.009        |
-| 5    | squared_relu | 6.1084   | baseline      |
+### Cumulative best config:
+Full attention (n_kv=8) + squared_relu + cosine LR + muon_momentum=0.90
+→ val_loss=**4.7952** (vs 4.9214 original = −0.126, −2.56%)
 
-**Verdict:** Default squared_relu is worst. relu wins by 0.049. Differences small — needs validation.
+### Improvement chain:
+| Step | Change | val_loss | Gain |
+|---|---|---|---|
+| Baseline | squared_relu + constant, n_kv=4, mom=0.95 | 4.9214 | — |
+| H6 | + cosine LR | 4.8956 | −0.026 |
+| H8 | + full attention (n_kv=8) | 4.8785 | −0.017 |
+| H9 | + momentum=0.90 | **4.7952** | **−0.083** |
 
-### Experiment 2: LR Schedule (2M tokens, squared_relu)
-| Config           | val_loss | Δ vs baseline |
-|------------------|----------|---------------|
-| constant (base)  | 6.1084   | —             |
-| warmup-constant  | 6.1278   | +0.019 (worse)|
-| warmup-cosine    | 6.0930   | −0.015        |
+### H9 finding (momentum sweep):
+- 0.90: 4.7952 (-0.083) ← **new best**
+- 0.95: 4.8785 (ref)
+- 0.98: 5.0581 (+0.179)
+- 0.99: 5.2200 (+0.341)
 
-**Verdict:** Warmup alone hurts. Cosine decay helps slightly (+0.015).
+Sharp asymmetry: too much momentum kills training with cosine LR.
+Interpretation: Muon orthogonalization needs fresh gradient signal; high momentum
+causes it to track stale gradient directions, worsening as LR decays.
 
-### Experiment 3: Combination (H2, 2M tokens)
-| Config               | val_loss |
-|----------------------|----------|
-| squared_relu+constant| 6.1084   |
-| relu+constant        | 6.0598   |
-| relu+cosine          | 6.0603   |
+### H10 goal:
+Find exact optimum. Does 0.85 or 0.80 beat 0.90? Or is 0.90 optimal?
 
-**Verdict:** relu+cosine gives NO additional gain over relu+constant. Improvements are NOT additive.
+## After H10
 
-## Derived Knowledge
-
-1. **relu activation** is best at 2M tokens (robust finding)
-2. **Cosine LR** helps with squared_relu but not with relu
-3. Mechanistic finding: smoothness, quadratic amplification, and gating all hurt at 2M token budget
-4. Current best config: relu + constant LR = 6.0598 (vs baseline 6.1084)
-
-## Next Actions
-
-1. Collect H3 results (~90 min)
-2. If relu gain persists at 8M: update experiment record, promote relu as default
-3. If cosine helps at 8M: update best config to relu+cosine
-4. Design H4 based on H3 results (LR value sweep or architecture test)
+- If lower momentum helps → try 0.70–0.80 range (H11)
+- If 0.90 is optimal → move to new axis:
+  - AdamW LR (embedding/bias optimizer, never tested)
+  - FFN expansion ratio d_ff/d_model ∈ {2, 4, 6}
+  - 20M token validation with full best config
 
 ## Blockers
 
-- None. Experiments running autonomously.
+None. H10 running.
