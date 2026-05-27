@@ -109,9 +109,3 @@ Run any preset with:
 ```bash
 python train_llm.py --config 100m
 ```
-
-To print the full ladder with exact parameter counts:
-
-```bash
-python scripts/print_model_scales.py
-```
