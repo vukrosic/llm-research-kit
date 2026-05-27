@@ -10,7 +10,15 @@ from torch.utils.data import DataLoader
 # Fix tokenizer parallelism warning when using DataLoader workers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from configs.llm_config import LLMConfig
+from configs.llm_config import (
+    LLMConfig,
+    ResearchConfig,
+    FastResearchConfig,
+    FiveMillionConfig,
+    TwentyFiveMillionConfig,
+    FiftyMillionConfig,
+    HundredMillionConfig,
+)
 from configs.dataset_config import DataConfig
 from training.trainer import train_minimal_llm
 from utils.helpers import set_seed, format_time
@@ -207,6 +215,13 @@ def main():
     parser.add_argument("--adamw_lr", type=float, help="Override AdamW learning rate")
     parser.add_argument("--train_tokens", type=int, default=1_000_000_000, help="Override train_tokens")
     parser.add_argument("--output_dir", type=str, default="./checkpoints", help="Output directory")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="default",
+        choices=["default", "research", "fast_research", "5m", "25m", "50m", "100m"],
+        help="Preset config to load",
+    )
     parser.add_argument("--config_class", type=str, help="Python path to config class (e.g., configs.llm_config.LLMConfig)")
     parser.add_argument("--load_checkpoint", type=str, help="Path to checkpoint file to load weights from")
     parser.add_argument("--compile", type=str, help="Whether to compile the model (true/false)")
@@ -227,6 +242,16 @@ def main():
     print(f"Random seed: {args.seed}")
 
     # Load Config
+    preset_map = {
+        "default": LLMConfig,
+        "research": ResearchConfig,
+        "fast_research": FastResearchConfig,
+        "5m": FiveMillionConfig,
+        "25m": TwentyFiveMillionConfig,
+        "50m": FiftyMillionConfig,
+        "100m": HundredMillionConfig,
+    }
+
     if args.config_class:
         import importlib
         try:
@@ -239,8 +264,8 @@ def main():
             print(f"Error loading config class {args.config_class}: {e}")
             raise e
     else:
-        # Default config
-        config = LLMConfig()
+        print(f"Loading config preset: {args.config}")
+        config = preset_map[args.config]()
 
     # Override config with args
     if args.muon_lr is not None:

@@ -54,3 +54,92 @@ class LLMConfig:
         self.d_k = self.d_model // self.n_heads
         assert self.d_model % self.n_heads == 0, "d_model must be divisible by n_heads"
 
+
+@dataclass
+class ResearchConfig(LLMConfig):
+    """Legacy research preset kept for backward compatibility."""
+
+    d_model: int = 384
+    n_heads: int = 6
+    n_layers: int = 4
+    d_ff: int = 1536
+    n_kv_heads: int = 3
+    max_seq_len: int = 1024
+    train_tokens: int = 25_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5
+
+
+@dataclass
+class FastResearchConfig(LLMConfig):
+    """A smaller weekly-paper preset for very quick smoke-to-paper runs."""
+
+    d_model: int = 256
+    n_heads: int = 4
+    n_layers: int = 2
+    d_ff: int = 1024
+    n_kv_heads: int = 2
+    max_seq_len: int = 512
+    train_tokens: int = 1_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5
+
+
+@dataclass
+class FiveMillionConfig(LLMConfig):
+    """~5M parameter preset for pipeline checks and first scaling-law points."""
+
+    d_model: int = 96
+    n_heads: int = 3
+    n_layers: int = 4
+    d_ff: int = 384
+    n_kv_heads: int = 1
+    max_seq_len: int = 2048
+    train_tokens: int = 8_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5
+
+
+@dataclass
+class TwentyFiveMillionConfig(LLMConfig):
+    """~25M parameter preset using 32-wide heads and a compact depth."""
+
+    d_model: int = 384
+    n_heads: int = 12
+    n_layers: int = 4
+    d_ff: int = 1536
+    n_kv_heads: int = 6
+    max_seq_len: int = 2048
+    train_tokens: int = 25_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5
+
+
+@dataclass
+class FiftyMillionConfig(LLMConfig):
+    """~50M parameter preset that keeps the 32-wide head pattern."""
+
+    d_model: int = 512
+    n_heads: int = 16
+    n_layers: int = 9
+    d_ff: int = 2048
+    n_kv_heads: int = 8
+    max_seq_len: int = 2048
+    train_tokens: int = 50_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5
+
+
+@dataclass
+class HundredMillionConfig(LLMConfig):
+    """~100M parameter preset for the main scaling-law target."""
+
+    d_model: int = 512
+    n_heads: int = 16
+    n_layers: int = 26
+    d_ff: int = 2048
+    n_kv_heads: int = 8
+    max_seq_len: int = 2048
+    train_tokens: int = 100_000_000
+    activation_variant: str = "squared_relu"
+    activation_slope: float = 0.5

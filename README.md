@@ -82,4 +82,26 @@ Default is an **88M parameter** transformer LLM, you can modify configs.
 - **Muon Support**: Architecture optimized for the Muon optimizer's orthogonal updates.
 - **Efficiency**: Designed for `torch.compile` compatibility and mixed-precision (BF16) training.
 
+## Scaling-Law Presets
+
+The repo now includes a clean size ladder for scaling-law work:
+
+| Preset | Approx params | Architecture |
+|---|---:|---|
+| `5m` | `5.1M` | `d_model=96`, `n_heads=3`, `n_layers=4`, `d_ff=384` |
+| `25m` | `25.4M` | `d_model=384`, `n_heads=12`, `n_layers=4`, `d_ff=1536` |
+| `50m` | `51.1M` | `d_model=512`, `n_heads=16`, `n_layers=9`, `d_ff=2048` |
+| `100m` | `100.2M` | `d_model=512`, `n_heads=16`, `n_layers=26`, `d_ff=2048` |
+
+Run any preset with:
+
+```bash
+python train_llm.py --config 100m
+```
+
+To print the full ladder with exact parameter counts:
+
+```bash
+python scripts/print_model_scales.py
+```
 
