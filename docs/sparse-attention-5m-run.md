@@ -37,9 +37,15 @@ Matched first pass against the existing 5M dense baseline.
 
 This sparse setting underperformed the dense 5M baseline at the same token budget.
 
+- The setups were matched on dataset, token budget, sequence length, batch size, and seed.
+- Sparse added `33,024` parameters, about `0.50%` over dense, due to router weights.
 - Val loss delta: `+0.4313` sparse minus dense
 - Val accuracy delta: `-0.0381` sparse minus dense
 - Active training time: `81.60s` sparse
+
+## Plot
+
+- Comparison figure with both step and time axes: `plots/attention_compare/5m_dense_vs_sparse_minimax.png`
 
 ## Next Question
 

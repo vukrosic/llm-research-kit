@@ -14,7 +14,7 @@ def plot_attention_comparison(dense_path: Path, sparse_path: Path, out_path: Pat
     dense = load_metrics(dense_path)
     sparse = load_metrics(sparse_path)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10), sharex="col")
     runs = [
         ("5M dense baseline", dense),
         ("5M MiniMax sparse", sparse),
@@ -22,17 +22,27 @@ def plot_attention_comparison(dense_path: Path, sparse_path: Path, out_path: Pat
 
     for label, data in runs:
         history = data["history"]
-        axes[0].plot(history["steps"], history["val_losses"], marker="o", linewidth=2, label=label)
-        axes[1].plot(history["steps"], history["val_accuracies"], marker="o", linewidth=2, label=label)
+        steps = history["steps"]
+        elapsed_minutes = [t / 60.0 for t in history["elapsed_times"]]
+        axes[0, 0].plot(steps, history["val_losses"], marker="o", linewidth=2, label=label)
+        axes[0, 1].plot(elapsed_minutes, history["val_losses"], marker="o", linewidth=2, label=label)
+        axes[1, 0].plot(steps, history["val_accuracies"], marker="o", linewidth=2, label=label)
+        axes[1, 1].plot(elapsed_minutes, history["val_accuracies"], marker="o", linewidth=2, label=label)
 
-    axes[0].set_title("Validation loss")
-    axes[0].set_xlabel("Training step")
-    axes[0].set_ylabel("Loss")
-    axes[1].set_title("Validation accuracy")
-    axes[1].set_xlabel("Training step")
-    axes[1].set_ylabel("Accuracy")
+    axes[0, 0].set_title("Validation loss vs step")
+    axes[0, 0].set_ylabel("Loss")
+    axes[0, 1].set_title("Validation loss vs time")
+    axes[0, 1].set_ylabel("Loss")
+    axes[1, 0].set_title("Validation accuracy vs step")
+    axes[1, 0].set_ylabel("Accuracy")
+    axes[1, 1].set_title("Validation accuracy vs time")
+    axes[1, 1].set_ylabel("Accuracy")
+    axes[1, 0].set_xlabel("Training step")
+    axes[1, 1].set_xlabel("Elapsed time (minutes)")
+    axes[0, 0].set_xlabel("Training step")
+    axes[0, 1].set_xlabel("Elapsed time (minutes)")
 
-    for ax in axes:
+    for ax in axes.flat:
         ax.grid(True, alpha=0.3)
         ax.legend()
 
