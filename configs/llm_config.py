@@ -1,5 +1,27 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
+
+
+@dataclass
+class MiniMaxSparseConfig:
+    block_size: int = 16
+    top_k: int = 8
+    index_dim: Optional[int] = None
+    pooling: str = "max"
+    router_source: str = "separate"
+    dropout: float = 0.0
+
+    def __post_init__(self):
+        if self.block_size <= 0:
+            raise ValueError("block_size must be positive")
+        if self.top_k < 0:
+            raise ValueError("top_k must be non-negative")
+        if self.index_dim is not None and self.index_dim <= 0:
+            raise ValueError("index_dim must be positive")
+        if self.pooling not in {"max", "mean", "logsumexp"}:
+            raise ValueError("pooling must be one of 'max', 'mean', or 'logsumexp'")
+        if self.router_source not in {"separate", "group_mean_q"}:
+            raise ValueError("router_source must be 'separate' or 'group_mean_q'")
 
 
 @dataclass
@@ -49,6 +71,8 @@ class LLMConfig:
     dropout: float = 0.0
     grad_clip: float = 1.0
     use_amp: bool = True
+    attention_impl: str = "dense"
+    minimax_sparse: MiniMaxSparseConfig = field(default_factory=MiniMaxSparseConfig)
     
     # Logging
     log_milestones: Tuple[int, ...] = (100, 500, 1000)
@@ -56,6 +80,10 @@ class LLMConfig:
     def __post_init__(self):
         self.d_k = self.d_model // self.n_heads
         assert self.d_model % self.n_heads == 0, "d_model must be divisible by n_heads"
+        assert self.n_heads % self.n_kv_heads == 0, "n_heads must be divisible by n_kv_heads"
+        if self.attention_impl not in {"dense", "minimax_sparse"}:
+            raise ValueError("attention_impl must be 'dense' or 'minimax_sparse'")
+        self.minimax_sparse.__post_init__()
 
 
 @dataclass

@@ -27,6 +27,8 @@ class MinimalLLM(nn.Module):
                     config.max_seq_len,
                     config.dropout,
                     n_kv_heads=config.n_kv_heads,
+                    attention_impl=config.attention_impl,
+                    minimax_sparse_config=config.minimax_sparse,
                 )
                 for i in range(config.n_layers)
             ]

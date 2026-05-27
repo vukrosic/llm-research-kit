@@ -433,7 +433,7 @@ def train_minimal_llm(
     load_weights_path: Optional[str] = None,
     compare_baseline: bool = False,
 ):
-    print(f"\n🚀 Training dense model")
+    print(f"\n🚀 Training {getattr(config, 'attention_impl', 'dense')} model")
     setup_start = time.time()
     device = resolve_device(getattr(config, "device", "auto"))
 
@@ -589,6 +589,12 @@ def train_minimal_llm(
         'actual_steps': step,
         'tokens_seen': tokens_seen,
         'train_tokens': config.train_tokens,
+        'model_config': {
+            key: value
+            for key, value in vars(config).items()
+            if key != 'minimax_sparse'
+        },
+        'minimax_sparse': vars(config.minimax_sparse),
         'history': metrics_history,
     }
     with open(metrics_file, 'w') as f:
