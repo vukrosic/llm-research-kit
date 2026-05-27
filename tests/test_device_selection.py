@@ -1,15 +1,12 @@
 import unittest
 
-import torch
-
-from training.device import DEVICE_CHOICES, resolve_device, training_dtype
+from training.device import DEVICE_CHOICES, resolve_device
 
 
 class DeviceSelectionTest(unittest.TestCase):
     def test_cpu_can_be_forced(self):
         device = resolve_device("cpu")
         self.assertEqual(device.type, "cpu")
-        self.assertEqual(training_dtype(device), torch.float32)
 
     def test_auto_resolves_to_supported_device(self):
         device = resolve_device("auto")

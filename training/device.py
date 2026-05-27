@@ -1,5 +1,3 @@
-from contextlib import nullcontext
-
 import torch
 
 
@@ -37,28 +35,3 @@ def describe_device(device: torch.device) -> str:
     if device.type == "mps":
         return "MPS: Apple Metal GPU"
     return "CPU"
-
-
-def training_dtype(device: torch.device) -> torch.dtype:
-    return torch.bfloat16 if device.type == "cuda" else torch.float32
-
-
-def autocast_context(device: torch.device, enabled: bool):
-    if enabled and device.type == "cuda":
-        return torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16)
-    return nullcontext()
-
-
-def synchronize_device(device: torch.device) -> None:
-    if device.type == "cuda":
-        torch.cuda.synchronize(device)
-    elif device.type == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "synchronize"):
-        torch.mps.synchronize()
-
-
-def empty_device_cache(device: torch.device) -> None:
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
-    elif device.type == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
-        torch.mps.empty_cache()
-

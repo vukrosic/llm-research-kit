@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import math
 from torch.utils.data import DataLoader
 from configs.llm_config import LLMConfig
-from training.device import autocast_context
 
 
 def evaluate_model(model: nn.Module, val_loader: DataLoader, config: LLMConfig):
@@ -41,16 +40,20 @@ def evaluate_model(model: nn.Module, val_loader: DataLoader, config: LLMConfig):
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
 
-            with autocast_context(device, enabled=config.use_amp):
+            if config.use_amp and device.type == "cuda":
+                with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16):
+                    logits = model(x)
+            else:
                 # Dense model evaluation
                 logits = model(x)
-                # Shift for causal LM: predict next token
-                shift_logits = logits[:, :-1, :].contiguous()
-                shift_labels = y[:, 1:].contiguous()
-                loss = F.cross_entropy(
-                    shift_logits.view(-1, config.vocab_size),
-                    shift_labels.view(-1)
-                )
+
+            # Shift for causal LM: predict next token
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = y[:, 1:].contiguous()
+            loss = F.cross_entropy(
+                shift_logits.view(-1, config.vocab_size),
+                shift_labels.view(-1)
+            )
 
             # Count tokens correctly (we lose one token per sequence due to shifting)
             num_tokens = shift_labels.numel()

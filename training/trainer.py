@@ -13,13 +13,7 @@ from typing import List, Optional, Callable, Dict, Any
 from configs.llm_config import LLMConfig
 from models.llm import MinimalLLM
 from optimizers.muon import Muon
-from training.device import (
-    autocast_context,
-    empty_device_cache,
-    resolve_device,
-    synchronize_device,
-    training_dtype,
-)
+from training.device import resolve_device
 from training.evaluation import evaluate_model
 from utils.helpers import set_seed, format_time
 
@@ -109,15 +103,15 @@ def train_model(
         model, final_metrics, metrics_history
     """
     device = resolve_device(getattr(config, "device", "auto"))
-    model = model.to(device, dtype=training_dtype(device))
+    model = model.to(device, dtype=torch.bfloat16) if device.type == "cuda" else model.to(device)
     
     if schedulers is None:
         schedulers = []
 
     current_loss_val = 0.0
 
-    # Synchronize accelerator to avoid queued operations in timing.
-    synchronize_device(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     train_start_time = time.time()
     metrics_history = {
         'steps': [],
@@ -167,7 +161,7 @@ def train_model(
 
             # Forward pass (optimized to avoid large contiguous copies of logits)
             if config.use_amp and device.type == "cuda":
-                with autocast_context(device, enabled=config.use_amp):
+                with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16):
                     logits = model(x)
                     # Shift labels instead of logits to save ~3GB VRAM
                     # We set the last token to -100 so cross_entropy ignores it
@@ -315,7 +309,8 @@ def train_model(
                 'train_loss': current_loss_val if 'current_loss_val' in locals() else 0.0,
             }
     
-    synchronize_device(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     total_time_seconds = time.time() - train_start_time
     
     if stopped_early:
@@ -399,7 +394,7 @@ def warmup_compiled_kernels(
         
         # Forward + Backward
         if config.use_amp and device.type == "cuda":
-            with autocast_context(device, enabled=config.use_amp):
+            with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16):
                 logits = model(x)
                 loss = F.cross_entropy(
                     logits[:, :-1, :].reshape(-1, config.vocab_size),
@@ -420,11 +415,13 @@ def warmup_compiled_kernels(
             opt.step()
             opt.zero_grad()
     
-    synchronize_device(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     
     # Cleanup temp optimizers
     del temp_optimizers
-    empty_device_cache(device)
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
     
     print("✅ Kernels compiled and cached")
 
@@ -495,7 +492,8 @@ def train_minimal_llm(
     
     # Free the backup
     del initial_model_state
-    empty_device_cache(device)
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
 
     # ============================================
     # 6. Create FRESH optimizers (no accumulated state)
@@ -543,9 +541,9 @@ def train_minimal_llm(
     # ============================================
     # 9. Train from scratch (fresh iterator created internally)
     # ============================================
-    # Clear accelerator cache and synchronize to ensure consistent starting state.
-    empty_device_cache(device)
-    synchronize_device(device)
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize(device)
     train_start = time.time()
     
     results = train_model(
