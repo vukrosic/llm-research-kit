@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from torch.utils.data import DataLoader
-from torch.amp import autocast
 from configs.llm_config import LLMConfig
+from training.device import autocast_context
 
 
 def evaluate_model(model: nn.Module, val_loader: DataLoader, config: LLMConfig):
@@ -41,7 +41,7 @@ def evaluate_model(model: nn.Module, val_loader: DataLoader, config: LLMConfig):
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
 
-            with autocast('cuda', dtype=torch.bfloat16, enabled=config.use_amp):
+            with autocast_context(device, enabled=config.use_amp):
                 # Dense model evaluation
                 logits = model(x)
                 # Shift for causal LM: predict next token

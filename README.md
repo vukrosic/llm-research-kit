@@ -109,3 +109,28 @@ Run any preset with:
 ```bash
 python train_llm.py --config 100m
 ```
+
+## Device Selection
+
+Training auto-detects the best available device:
+
+1. NVIDIA CUDA GPU
+2. Apple Metal GPU through MPS
+3. CPU fallback
+
+Use the default auto mode:
+
+```bash
+python train_llm.py
+```
+
+Or force a backend explicitly:
+
+```bash
+python train_llm.py --device cuda
+python train_llm.py --device mps
+python train_llm.py --device cpu
+```
+
+CUDA runs use BF16 autocast and fused AdamW. MPS and CPU run in FP32 by default
+for portability.

@@ -8,12 +8,18 @@ import json
 import json
 from pathlib import Path
 from torch.utils.data import DataLoader
-from torch.amp import autocast
 from tqdm import tqdm
 from typing import List, Optional, Callable, Dict, Any
 from configs.llm_config import LLMConfig
 from models.llm import MinimalLLM
 from optimizers.muon import Muon
+from training.device import (
+    autocast_context,
+    empty_device_cache,
+    resolve_device,
+    synchronize_device,
+    training_dtype,
+)
 from training.evaluation import evaluate_model
 from utils.helpers import set_seed, format_time
 
@@ -62,11 +68,12 @@ def setup_muon_optimizer(model: nn.Module, config: LLMConfig):
     print(f"  AdamW parameters: {sum(p.numel() for p in adamw_params):,}")
 
     muon_optimizer = Muon(muon_params, lr=config.muon_lr, momentum=config.muon_momentum)
+    device = resolve_device(getattr(config, "device", "auto"))
     adamw_optimizer = torch.optim.AdamW(
         adamw_params,
         lr=config.adamw_lr,
         weight_decay=config.weight_decay,
-        fused=torch.cuda.is_available()
+        fused=device.type == "cuda"
     )
 
     return [muon_optimizer, adamw_optimizer]
@@ -101,18 +108,16 @@ def train_model(
     Returns:
         model, final_metrics, metrics_history
     """
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = model.to(device, dtype=torch.bfloat16)
+    device = resolve_device(getattr(config, "device", "auto"))
+    model = model.to(device, dtype=training_dtype(device))
     
     if schedulers is None:
         schedulers = []
 
     current_loss_val = 0.0
 
-    # Training metrics tracking
-    # Synchronize CUDA to ensure accurate timing (no queued operations)
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
+    # Synchronize accelerator to avoid queued operations in timing.
+    synchronize_device(device)
     train_start_time = time.time()
     metrics_history = {
         'steps': [],
@@ -161,8 +166,8 @@ def train_model(
             batch_tokens = x.numel()
 
             # Forward pass (optimized to avoid large contiguous copies of logits)
-            if config.use_amp:
-                with autocast('cuda', dtype=torch.bfloat16):
+            if config.use_amp and device.type == "cuda":
+                with autocast_context(device, enabled=config.use_amp):
                     logits = model(x)
                     # Shift labels instead of logits to save ~3GB VRAM
                     # We set the last token to -100 so cross_entropy ignores it
@@ -310,9 +315,7 @@ def train_model(
                 'train_loss': current_loss_val if 'current_loss_val' in locals() else 0.0,
             }
     
-    # Synchronize CUDA to ensure all operations are complete before ending timer
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
+    synchronize_device(device)
     total_time_seconds = time.time() - train_start_time
     
     if stopped_early:
@@ -395,8 +398,8 @@ def warmup_compiled_kernels(
             x, y = batch[0].to(device), batch[-1].to(device)
         
         # Forward + Backward
-        if config.use_amp:
-            with autocast('cuda', dtype=torch.bfloat16):
+        if config.use_amp and device.type == "cuda":
+            with autocast_context(device, enabled=config.use_amp):
                 logits = model(x)
                 loss = F.cross_entropy(
                     logits[:, :-1, :].reshape(-1, config.vocab_size),
@@ -417,11 +420,11 @@ def warmup_compiled_kernels(
             opt.step()
             opt.zero_grad()
     
-    torch.cuda.synchronize()
+    synchronize_device(device)
     
     # Cleanup temp optimizers
     del temp_optimizers
-    torch.cuda.empty_cache()
+    empty_device_cache(device)
     
     print("✅ Kernels compiled and cached")
 
@@ -435,7 +438,7 @@ def train_minimal_llm(
 ):
     print(f"\n🚀 Training dense model")
     setup_start = time.time()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = resolve_device(getattr(config, "device", "auto"))
 
     # ============================================
     # 1. Initialize model with fixed seed
@@ -492,7 +495,7 @@ def train_minimal_llm(
     
     # Free the backup
     del initial_model_state
-    torch.cuda.empty_cache()
+    empty_device_cache(device)
 
     # ============================================
     # 6. Create FRESH optimizers (no accumulated state)
@@ -540,10 +543,9 @@ def train_minimal_llm(
     # ============================================
     # 9. Train from scratch (fresh iterator created internally)
     # ============================================
-    # Clear GPU cache and synchronize to ensure consistent starting state
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
+    # Clear accelerator cache and synchronize to ensure consistent starting state.
+    empty_device_cache(device)
+    synchronize_device(device)
     train_start = time.time()
     
     results = train_model(

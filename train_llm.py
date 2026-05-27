@@ -21,6 +21,7 @@ from configs.llm_config import (
 )
 from configs.dataset_config import DataConfig
 from training.trainer import train_minimal_llm
+from training.device import DEVICE_CHOICES, describe_device, resolve_device
 from utils.helpers import set_seed, format_time
 from utils.logger import setup_logging
 
@@ -35,12 +36,9 @@ def worker_init_fn(worker_id):
     random.seed(worker_seed)
 
 
-def print_system_info():
-    device = "CUDA" if torch.cuda.is_available() else "CPU"
-    print(f"Device: {device}")
-    if torch.cuda.is_available():
-        props = torch.cuda.get_device_properties(0)
-        print(f"GPU: {props.name} ({props.total_memory / 1e9:.1f} GB)")
+def print_system_info(requested_device: str):
+    device = resolve_device(requested_device)
+    print(f"Device: {describe_device(device)}")
     print(f"PyTorch: {torch.__version__}\n")
 
 
@@ -209,7 +207,6 @@ def main():
     logger = setup_logging(log_dir="./logs")
     logger.info("Starting training")
 
-    print_system_info()
     parser = argparse.ArgumentParser(description="Train MoE Model")
     parser.add_argument("--muon_lr", type=float, help="Override Muon learning rate")
     parser.add_argument("--adamw_lr", type=float, help="Override AdamW learning rate")
@@ -225,6 +222,13 @@ def main():
     parser.add_argument("--config_class", type=str, help="Python path to config class (e.g., configs.llm_config.LLMConfig)")
     parser.add_argument("--load_checkpoint", type=str, help="Path to checkpoint file to load weights from")
     parser.add_argument("--compile", type=str, help="Whether to compile the model (true/false)")
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        choices=DEVICE_CHOICES,
+        help="Device to use: auto prefers CUDA, then MPS, then CPU",
+    )
     parser.add_argument("--dataset_path", type=str, help="Path to preprocessed dataset directory")
     parser.add_argument("--eval_every", type=int, help="Override eval_every steps")
     parser.add_argument("--save_every", type=int, help="Override save_every steps")
@@ -235,6 +239,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
 
     args = parser.parse_args()
+
+    print_system_info(args.device)
 
     # Set global seed for reproducibility
     _GLOBAL_SEED = args.seed
@@ -276,6 +282,7 @@ def main():
         config.train_tokens = args.train_tokens
     if args.compile is not None:
         config.compile_model = (args.compile.lower() == "true")
+    config.device = args.device
     if args.eval_every is not None:
         config.eval_every = args.eval_every
     if args.save_every is not None:
@@ -367,7 +374,7 @@ def main():
     loader_args = dict(
         batch_size=config.batch_size,
         num_workers=2,
-        pin_memory=torch.cuda.is_available(),
+        pin_memory=resolve_device(config.device).type == "cuda",
         persistent_workers=True,
         worker_init_fn=worker_init_fn,
         generator=g,
@@ -380,6 +387,7 @@ def main():
     print("-" * 70)
     print(f"d_model: {config.d_model}, layers: {config.n_layers}, heads: {config.n_heads}")
     print(f"ff dim: {config.d_ff}")
+    print(f"device: {config.device} -> {describe_device(resolve_device(config.device))}")
     print(f"train tokens: {config.train_tokens:,}")
     print(f"batch size: {config.batch_size}")
     print(f"vocab size: {config.vocab_size}\n")

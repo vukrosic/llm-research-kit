@@ -26,6 +26,7 @@ class LLMConfig:
     vocab_size: int = 49152  
     
     # Base Training Defaults
+    device: str = "auto"  # auto, cuda, mps, or cpu
     compile_model: bool = True
     batch_size: int = 8
     gradient_accumulation_steps: int = 1
