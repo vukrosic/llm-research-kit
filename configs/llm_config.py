@@ -4,6 +4,8 @@ from typing import Optional, Tuple
 
 @dataclass
 class LLMConfig:
+    """Default legacy tuned large preset: 88,630,528 parameters."""
+
     # Model architecture (88M Params)
     d_model: int = 512       
     n_heads: int = 8         
@@ -57,7 +59,7 @@ class LLMConfig:
 
 @dataclass
 class ResearchConfig(LLMConfig):
-    """Legacy research preset kept for backward compatibility."""
+    """Legacy research preset: 25,366,272 parameters."""
 
     d_model: int = 384
     n_heads: int = 8
@@ -72,7 +74,7 @@ class ResearchConfig(LLMConfig):
 
 @dataclass
 class FastResearchConfig(LLMConfig):
-    """Fast smoke-test preset for quick local experiments."""
+    """Fast smoke-test preset: 14,026,240 parameters."""
 
     d_model: int = 256
     n_heads: int = 4
@@ -87,7 +89,7 @@ class FastResearchConfig(LLMConfig):
 
 @dataclass
 class FiveMillionConfig(LLMConfig):
-    """Tiny preset for pipeline checks before the real scaling-law ladder."""
+    """Tiny pipeline preset: 6,652,800 parameters."""
 
     d_model: int = 128
     n_heads: int = 2
@@ -102,7 +104,7 @@ class FiveMillionConfig(LLMConfig):
 
 @dataclass
 class TwentyFiveMillionConfig(LLMConfig):
-    """Small scaling-law preset with clean model dimensions."""
+    """Small scaling-law preset: 25,366,272 parameters."""
 
     d_model: int = 384
     n_heads: int = 8
@@ -117,7 +119,7 @@ class TwentyFiveMillionConfig(LLMConfig):
 
 @dataclass
 class FiftyMillionConfig(LLMConfig):
-    """Mid-size scaling-law preset matching the default model width."""
+    """Mid scaling-law preset: 48,244,224 parameters."""
 
     d_model: int = 512
     n_heads: int = 8
@@ -132,7 +134,7 @@ class FiftyMillionConfig(LLMConfig):
 
 @dataclass
 class HundredMillionConfig(LLMConfig):
-    """Large scaling-law preset: default architecture with more depth."""
+    """Large scaling-law preset: 100,169,472 parameters."""
 
     d_model: int = 512
     n_heads: int = 8
