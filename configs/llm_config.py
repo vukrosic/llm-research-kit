@@ -60,10 +60,10 @@ class ResearchConfig(LLMConfig):
     """Legacy research preset kept for backward compatibility."""
 
     d_model: int = 384
-    n_heads: int = 6
+    n_heads: int = 8
     n_layers: int = 4
     d_ff: int = 1536
-    n_kv_heads: int = 3
+    n_kv_heads: int = 4
     max_seq_len: int = 1024
     train_tokens: int = 25_000_000
     activation_variant: str = "squared_relu"
@@ -72,7 +72,7 @@ class ResearchConfig(LLMConfig):
 
 @dataclass
 class FastResearchConfig(LLMConfig):
-    """A smaller weekly-paper preset for very quick smoke-to-paper runs."""
+    """Fast smoke-test preset for quick local experiments."""
 
     d_model: int = 256
     n_heads: int = 4
@@ -87,12 +87,12 @@ class FastResearchConfig(LLMConfig):
 
 @dataclass
 class FiveMillionConfig(LLMConfig):
-    """~5M parameter preset for pipeline checks and first scaling-law points."""
+    """Tiny preset for pipeline checks before the real scaling-law ladder."""
 
-    d_model: int = 96
-    n_heads: int = 3
-    n_layers: int = 4
-    d_ff: int = 384
+    d_model: int = 128
+    n_heads: int = 2
+    n_layers: int = 2
+    d_ff: int = 512
     n_kv_heads: int = 1
     max_seq_len: int = 2048
     train_tokens: int = 8_000_000
@@ -102,13 +102,13 @@ class FiveMillionConfig(LLMConfig):
 
 @dataclass
 class TwentyFiveMillionConfig(LLMConfig):
-    """~25M parameter preset using 32-wide heads and a compact depth."""
+    """Small scaling-law preset with clean model dimensions."""
 
     d_model: int = 384
-    n_heads: int = 12
+    n_heads: int = 8
     n_layers: int = 4
     d_ff: int = 1536
-    n_kv_heads: int = 6
+    n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 25_000_000
     activation_variant: str = "squared_relu"
@@ -117,13 +117,13 @@ class TwentyFiveMillionConfig(LLMConfig):
 
 @dataclass
 class FiftyMillionConfig(LLMConfig):
-    """~50M parameter preset that keeps the 32-wide head pattern."""
+    """Mid-size scaling-law preset matching the default model width."""
 
     d_model: int = 512
-    n_heads: int = 16
-    n_layers: int = 9
+    n_heads: int = 8
+    n_layers: int = 8
     d_ff: int = 2048
-    n_kv_heads: int = 8
+    n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 50_000_000
     activation_variant: str = "squared_relu"
@@ -132,13 +132,13 @@ class FiftyMillionConfig(LLMConfig):
 
 @dataclass
 class HundredMillionConfig(LLMConfig):
-    """~100M parameter preset for the main scaling-law target."""
+    """Large scaling-law preset: default architecture with more depth."""
 
     d_model: int = 512
-    n_heads: int = 16
+    n_heads: int = 8
     n_layers: int = 26
     d_ff: int = 2048
-    n_kv_heads: int = 8
+    n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 100_000_000
     activation_variant: str = "squared_relu"

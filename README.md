@@ -84,14 +84,25 @@ Default is an **88M parameter** transformer LLM, you can modify configs.
 
 ## Scaling-Law Presets
 
-The repo now includes a clean size ladder for scaling-law work:
+The repo includes named presets for scaling-law work. The names are rough size
+labels, not exact parameter contracts; the priority is clean architecture
+numbers and comparable shapes.
 
-| Preset | Approx params | Architecture |
-|---|---:|---|
-| `5m` | `5.1M` | `d_model=96`, `n_heads=3`, `n_layers=4`, `d_ff=384` |
-| `25m` | `25.4M` | `d_model=384`, `n_heads=12`, `n_layers=4`, `d_ff=1536` |
-| `50m` | `51.1M` | `d_model=512`, `n_heads=16`, `n_layers=9`, `d_ff=2048` |
-| `100m` | `100.2M` | `d_model=512`, `n_heads=16`, `n_layers=26`, `d_ff=2048` |
+| Preset | Params | Architecture | Purpose |
+|---|---:|---|---|
+| `fast_research` | `14.0M` | `d_model=256`, `n_heads=4`, `n_kv_heads=2`, `n_layers=2`, `d_ff=1024`, `seq=512` | Quick smoke-test preset |
+| `5m` | `6.7M` | `d_model=128`, `n_heads=2`, `n_kv_heads=1`, `n_layers=2`, `d_ff=512`, `seq=2048` | Tiny pipeline check |
+| `25m` | `25.4M` | `d_model=384`, `n_heads=8`, `n_kv_heads=4`, `n_layers=4`, `d_ff=1536`, `seq=2048` | Small scaling point |
+| `50m` | `48.2M` | `d_model=512`, `n_heads=8`, `n_kv_heads=4`, `n_layers=8`, `d_ff=2048`, `seq=2048` | Mid scaling point |
+| `default` | `88.6M` | `d_model=512`, `n_heads=8`, `n_kv_heads=4`, `n_layers=22`, `d_ff=2048`, `seq=2048` | Legacy tuned large preset |
+| `100m` | `100.2M` | `d_model=512`, `n_heads=8`, `n_kv_heads=4`, `n_layers=26`, `d_ff=2048`, `seq=2048` | Large scaling point |
+| `research` | `25.4M` | `d_model=384`, `n_heads=8`, `n_kv_heads=4`, `n_layers=4`, `d_ff=1536`, `seq=1024` | Legacy research preset |
+
+The main ladder is `5m -> 25m -> 50m -> default -> 100m`. The `default` and
+`100m` presets use the same width, head layout, KV-head layout, and FFN width;
+`100m` is just the deeper version. This keeps the largest models close to the
+legacy tuned architecture while still giving a clean progression for scaling
+curves.
 
 Run any preset with:
 
@@ -104,4 +115,3 @@ To print the full ladder with exact parameter counts:
 ```bash
 python scripts/print_model_scales.py
 ```
-
