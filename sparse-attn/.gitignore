@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+baseline/
+hf_cache/
+processed_data/
+runs/
+docs/*.aux
+docs/*.log
+docs/*.out
+*.pt
