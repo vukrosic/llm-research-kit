@@ -59,36 +59,6 @@ class LLMConfig:
 
 
 @dataclass
-class ResearchConfig(LLMConfig):
-    """Legacy research preset: 25,366,272 parameters."""
-
-    d_model: int = 384
-    n_heads: int = 8
-    n_layers: int = 4
-    d_ff: int = 1536
-    n_kv_heads: int = 4
-    max_seq_len: int = 1024
-    train_tokens: int = 25_000_000
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5
-
-
-@dataclass
-class FastResearchConfig(LLMConfig):
-    """Fast smoke-test preset: 14,026,240 parameters."""
-
-    d_model: int = 256
-    n_heads: int = 4
-    n_layers: int = 2
-    d_ff: int = 1024
-    n_kv_heads: int = 2
-    max_seq_len: int = 512
-    train_tokens: int = 1_000_000
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5
-
-
-@dataclass
 class FiveMillionConfig(LLMConfig):
     """Tiny pipeline preset: 6,652,800 parameters."""
 
@@ -99,8 +69,6 @@ class FiveMillionConfig(LLMConfig):
     n_kv_heads: int = 1
     max_seq_len: int = 2048
     train_tokens: int = 134_000_000  # 20x params
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5
 
 
 @dataclass
@@ -114,8 +82,6 @@ class TwentyFiveMillionConfig(LLMConfig):
     n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 507_000_000  # 20x params
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5
 
 
 @dataclass
@@ -129,8 +95,6 @@ class FiftyMillionConfig(LLMConfig):
     n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 965_000_000  # 20x params
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5
 
 
 @dataclass
@@ -144,5 +108,3 @@ class HundredMillionConfig(LLMConfig):
     n_kv_heads: int = 4
     max_seq_len: int = 2048
     train_tokens: int = 2_000_000_000  # 20x params
-    activation_variant: str = "squared_relu"
-    activation_slope: float = 0.5

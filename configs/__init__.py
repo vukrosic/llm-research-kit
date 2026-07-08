@@ -1,7 +1,5 @@
 from .llm_config import (
     LLMConfig,
-    ResearchConfig,
-    FastResearchConfig,
     FiveMillionConfig,
     TwentyFiveMillionConfig,
     FiftyMillionConfig,
@@ -11,8 +9,6 @@ from .dataset_config import DataConfig
 
 __all__ = [
     "LLMConfig",
-    "ResearchConfig",
-    "FastResearchConfig",
     "FiveMillionConfig",
     "TwentyFiveMillionConfig",
     "FiftyMillionConfig",
