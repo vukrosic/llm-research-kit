@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchtune.modules import RotaryPositionalEmbeddings
 from .components import SquaredReLUFeedForward
+from .minimax_sparse_attention import MiniMaxSparseAttention
 
 
 class Rotary(nn.Module):
@@ -116,10 +117,30 @@ class TransformerBlock(nn.Module):
         max_seq_len: int,
         dropout: float = 0.1,
         n_kv_heads: int | None = None,
+        attention_impl: str = "dense",
+        minimax_sparse_config=None,
     ):
         super().__init__()
 
-        self.attention = MultiHeadAttention(d_model, n_heads, max_seq_len, dropout, n_kv_heads)
+        if attention_impl == "dense":
+            self.attention = MultiHeadAttention(d_model, n_heads, max_seq_len, dropout, n_kv_heads)
+        elif attention_impl == "minimax_sparse":
+            if minimax_sparse_config is None:
+                raise ValueError("minimax_sparse_config is required for minimax_sparse attention")
+            self.attention = MiniMaxSparseAttention(
+                d_model=d_model,
+                n_heads=n_heads,
+                n_kv_heads=n_kv_heads,
+                max_seq_len=max_seq_len,
+                block_size=minimax_sparse_config.block_size,
+                top_k=minimax_sparse_config.top_k,
+                index_dim=minimax_sparse_config.index_dim,
+                pooling=minimax_sparse_config.pooling,
+                router_source=minimax_sparse_config.router_source,
+                dropout=minimax_sparse_config.dropout,
+            )
+        else:
+            raise ValueError(f"unsupported attention_impl: {attention_impl}")
         self.feed_forward = SquaredReLUFeedForward(d_model, d_ff, dropout)
 
         # Normalization layers

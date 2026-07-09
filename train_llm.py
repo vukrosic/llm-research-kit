@@ -248,6 +248,12 @@ def main():
     parser.add_argument("--log_every", type=int, default=100, help="Logging frequency in steps")
     parser.add_argument("--warmup", type=str, default="true", help="Whether to perform untimed compilation warmup (true/false)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
+    parser.add_argument("--attention_impl", choices=["dense", "minimax_sparse"], help="Attention implementation")
+    parser.add_argument("--sparse_block_size", type=int, help="MiniMax sparse block size")
+    parser.add_argument("--sparse_top_k", type=int, help="MiniMax sparse top-k blocks")
+    parser.add_argument("--sparse_index_dim", type=int, help="MiniMax sparse router dimension")
+    parser.add_argument("--sparse_pooling", choices=["max", "mean", "logsumexp"], help="MiniMax sparse block pooling")
+    parser.add_argument("--sparse_router_source", choices=["separate", "group_mean_q"], help="MiniMax sparse router source")
 
     args = parser.parse_args()
 
@@ -302,6 +308,19 @@ def main():
         config.gradient_accumulation_steps = args.gradient_accumulation_steps
     if args.log_every is not None:
         config.log_every = args.log_every
+    if args.attention_impl is not None:
+        config.attention_impl = args.attention_impl
+    if args.sparse_block_size is not None:
+        config.minimax_sparse.block_size = args.sparse_block_size
+    if args.sparse_top_k is not None:
+        config.minimax_sparse.top_k = args.sparse_top_k
+    if args.sparse_index_dim is not None:
+        config.minimax_sparse.index_dim = args.sparse_index_dim
+    if args.sparse_pooling is not None:
+        config.minimax_sparse.pooling = args.sparse_pooling
+    if args.sparse_router_source is not None:
+        config.minimax_sparse.router_source = args.sparse_router_source
+    config.__post_init__()
     
     # Define custom milestones for validation curves and autosetup logging.
     # These are denser than the old schedule so future runs produce better
@@ -390,6 +409,9 @@ def main():
     print("-" * 70)
     print(f"d_model: {config.d_model}, layers: {config.n_layers}, heads: {config.n_heads}")
     print(f"ff dim: {config.d_ff}")
+    print(f"attention: {config.attention_impl}")
+    if config.attention_impl == "minimax_sparse":
+        print(f"sparse block/top_k/index: {config.minimax_sparse.block_size}/{config.minimax_sparse.top_k}/{config.minimax_sparse.index_dim}")
     print(f"device: {config.device} -> {describe_device(resolve_device(config.device))}")
     print(f"train tokens: {config.train_tokens:,}")
     print(f"batch size: {config.batch_size}")
